@@ -1,10 +1,11 @@
 using GuitarResourcesTui.Fretboards;
+using GuitarResourcesTui.IntervalMaps;
 using GuitarResourcesTui.Pentatonics;
 using GuitarResourcesTui.Triads;
 
 namespace GuitarResourcesTui.Tui;
 
-public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentatonics)
+public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentatonics, IntervalFunctionMapLibrary intervalMaps)
 {
     private const string Reset = "\e[0m";
     private const string Root = "\e[1;38;5;46m";
@@ -23,6 +24,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             WriteHeader("Guitar Resources");
             Console.WriteLine("1. Triad inversions");
             Console.WriteLine("2. Scale shapes");
+            Console.WriteLine("3. Interval function map");
             Console.WriteLine("0. Exit");
             Console.WriteLine();
             Console.Write("Choose an option > ");
@@ -35,12 +37,59 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                 case "2":
                     ShowPentatonicShapes();
                     break;
+                case "3":
+                    ShowIntervalFunctionMap();
+                    break;
                 case "0":
                     return;
                 default:
                     Console.WriteLine("That choice is not on the menu.");
                     Console.ReadKey(intercept: true);
                     break;
+            }
+        }
+    }
+
+    private void ShowIntervalFunctionMap()
+    {
+        Console.Clear();
+        WriteHeader("Interval function map");
+
+        var root = ReadMenuChoice("Choose a root", MusicTheory.ChromaticRoots);
+        var startFretChoice = ReadMenuChoice("Choose a starting fret", ["0", "3", "5", "7", "9", "12"]);
+        var startFret = int.Parse(startFretChoice);
+
+        while (true)
+        {
+            var diagram = intervalMaps.BuildMap(root, startFret);
+
+            Console.Clear();
+            WriteHeader($"{root} interval function map ({diagram.StartFret}-{diagram.StartFret + diagram.Length - 1})");
+            Console.WriteLine($"Labels: {Root}R{Reset} = root, intervals are relative to {root}");
+            Console.WriteLine("N/P = move window, Q = back");
+            Console.WriteLine();
+
+            foreach (var line in _renderer.Render(diagram))
+            {
+                Console.WriteLine(line);
+            }
+
+            Console.WriteLine();
+            Console.Write("Command > ");
+
+            switch (Console.ReadKey(intercept: true).Key)
+            {
+                case ConsoleKey.N:
+                case ConsoleKey.RightArrow:
+                    startFret = Math.Min(IntervalFunctionMapLibrary.MaxStartFret, startFret + 1);
+                    break;
+                case ConsoleKey.P:
+                case ConsoleKey.LeftArrow:
+                    startFret = Math.Max(0, startFret - 1);
+                    break;
+                case ConsoleKey.Q:
+                case ConsoleKey.Escape:
+                    return;
             }
         }
     }

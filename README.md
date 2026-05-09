@@ -19,4 +19,5 @@ dotnet run --project Tests/GuitarResourcesTui.Tests/GuitarResourcesTui.Tests.csp
 - Major and minor pentatonic scale boxes
 - Major and minor blues scale boxes
 - Major scale, natural minor, major-scale modes, harmonic minor, and melodic minor shapes
+- Interval function maps for learning note relationships across fretboard windows
 - Colored interval labels and reusable fretboard rendering

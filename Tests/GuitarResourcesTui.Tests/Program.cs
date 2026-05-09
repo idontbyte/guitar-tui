@@ -1,10 +1,12 @@
 using System.Text.RegularExpressions;
 using GuitarResourcesTui.Fretboards;
+using GuitarResourcesTui.IntervalMaps;
 using GuitarResourcesTui.Pentatonics;
 using GuitarResourcesTui.Triads;
 
 new TriadInversionTests().RunAll();
 new PentatonicShapeTests().RunAll();
+new IntervalFunctionMapTests().RunAll();
 Console.WriteLine("All tests passed.");
 
 internal sealed class TriadInversionTests
@@ -366,6 +368,71 @@ internal sealed class PentatonicShapeTests
             TestAssert.Equal(expectedLabel, position.Label, $"{root} {scaleKind} shape {shape.Number} labels intervals correctly");
             TestAssert.True(position.Fret >= shape.Diagram.StartFret, $"{root} {scaleKind} shape {shape.Number} position starts inside diagram");
             TestAssert.True(position.Fret < shape.Diagram.StartFret + shape.Diagram.Length, $"{root} {scaleKind} shape {shape.Number} position ends inside diagram");
+        }
+    }
+}
+
+internal sealed class IntervalFunctionMapTests
+{
+    private static readonly IReadOnlyDictionary<int, int> OpenPitchByStringIndex = new Dictionary<int, int>
+    {
+        [0] = 4,
+        [1] = 11,
+        [2] = 7,
+        [3] = 2,
+        [4] = 9,
+        [5] = 4
+    };
+
+    private static readonly IReadOnlyDictionary<int, string> ExpectedLabels = new Dictionary<int, string>
+    {
+        [0] = "R",
+        [1] = "b2",
+        [2] = "2",
+        [3] = "b3",
+        [4] = "3",
+        [5] = "4",
+        [6] = "b5",
+        [7] = "5",
+        [8] = "b6",
+        [9] = "6",
+        [10] = "b7",
+        [11] = "7"
+    };
+
+    public void RunAll()
+    {
+        var library = new IntervalFunctionMapLibrary();
+
+        foreach (var root in MusicTheory.ChromaticRoots)
+        {
+            foreach (var startFret in new[] { 0, 3, 5, 7, 12, 19 })
+            {
+                AssertIntervalMap(root, startFret, library.BuildMap(root, startFret));
+            }
+        }
+
+        var clamped = library.BuildMap("A", 30);
+        TestAssert.Equal(IntervalFunctionMapLibrary.MaxStartFret, clamped.StartFret, "Interval map clamps high start frets");
+    }
+
+    private static void AssertIntervalMap(string root, int startFret, FretboardDiagram diagram)
+    {
+        var rootPitch = MusicTheory.PitchClassFor(root);
+        TestAssert.Equal(startFret, diagram.StartFret, $"{root} interval map start fret");
+        TestAssert.Equal(IntervalFunctionMapLibrary.DefaultWindowLength, diagram.Length, $"{root} interval map length");
+        TestAssert.SequenceEqual(["E", "B", "G", "D", "A", "E"], diagram.Strings, $"{root} interval map string order");
+        TestAssert.Equal(30, diagram.Positions.Count, $"{root} interval map labels every fret in the window");
+
+        foreach (var position in diagram.Positions)
+        {
+            TestAssert.True(position.SourceStringIndex is not null, $"{root} interval map records source string index");
+            TestAssert.True(position.Fret >= diagram.StartFret, $"{root} interval map position starts inside diagram");
+            TestAssert.True(position.Fret < diagram.StartFret + diagram.Length, $"{root} interval map position ends inside diagram");
+
+            var pitch = MusicTheory.Normalize(OpenPitchByStringIndex[position.SourceStringIndex!.Value] + position.Fret);
+            var interval = MusicTheory.Normalize(pitch - rootPitch);
+            TestAssert.Equal(ExpectedLabels[interval], position.Label, $"{root} interval map label at string {position.SourceStringIndex} fret {position.Fret}");
         }
     }
 }
