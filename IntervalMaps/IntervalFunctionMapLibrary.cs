@@ -5,8 +5,9 @@ namespace GuitarResourcesTui.IntervalMaps;
 
 public sealed class IntervalFunctionMapLibrary
 {
-    public const int DefaultWindowLength = 5;
-    public const int MaxStartFret = 19;
+    public const int DefaultWindowLength = 9;
+    public const int MaxStartFret = 15;
+    public const int MaxAnchorFret = 19;
 
     private static readonly IReadOnlyList<GuitarString> Tuning =
     [
@@ -34,14 +35,15 @@ public sealed class IntervalFunctionMapLibrary
         [11] = "7"
     };
 
-    public FretboardDiagram BuildMap(string root, int startFret, int length = DefaultWindowLength)
+    public FretboardDiagram BuildMap(string root, int anchorFret, int length = DefaultWindowLength)
     {
         if (length < 1)
         {
             throw new ArgumentOutOfRangeException(nameof(length), "Interval map length must be at least one fret.");
         }
 
-        var clampedStartFret = Math.Clamp(startFret, 0, MaxStartFret);
+        var clampedAnchorFret = Math.Clamp(anchorFret, 0, MaxAnchorFret);
+        var clampedStartFret = Math.Clamp(clampedAnchorFret - length / 2, 0, MaxStartFret);
         var rootPitch = MusicTheory.PitchClassFor(root);
         var positions = new List<FretPosition>();
 

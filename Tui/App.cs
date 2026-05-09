@@ -56,17 +56,18 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         WriteHeader("Interval function map");
 
         var root = ReadMenuChoice("Choose a root", MusicTheory.ChromaticRoots);
-        var startFretChoice = ReadMenuChoice("Choose a starting fret", ["0", "3", "5", "7", "9", "12"]);
-        var startFret = int.Parse(startFretChoice);
+        var anchorFretChoice = ReadMenuChoice("Choose an anchor fret", ["0", "3", "5", "7", "9", "12"]);
+        var anchorFret = int.Parse(anchorFretChoice);
 
         while (true)
         {
-            var diagram = intervalMaps.BuildMap(root, startFret);
+            var diagram = intervalMaps.BuildMap(root, anchorFret);
 
             Console.Clear();
             WriteHeader($"{root} interval function map ({diagram.StartFret}-{diagram.StartFret + diagram.Length - 1})");
             Console.WriteLine($"Labels: {Root}R{Reset} = root, intervals are relative to {root}");
-            Console.WriteLine("N/P = move window, Q = back");
+            Console.WriteLine($"Anchor fret: {anchorFret}");
+            Console.WriteLine("N/P = move anchor fret, Q = back");
             Console.WriteLine();
 
             foreach (var line in _renderer.Render(diagram))
@@ -81,11 +82,11 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             {
                 case ConsoleKey.N:
                 case ConsoleKey.RightArrow:
-                    startFret = Math.Min(IntervalFunctionMapLibrary.MaxStartFret, startFret + 1);
+                    anchorFret = Math.Min(IntervalFunctionMapLibrary.MaxAnchorFret, anchorFret + 1);
                     break;
                 case ConsoleKey.P:
                 case ConsoleKey.LeftArrow:
-                    startFret = Math.Max(0, startFret - 1);
+                    anchorFret = Math.Max(0, anchorFret - 1);
                     break;
                 case ConsoleKey.Q:
                 case ConsoleKey.Escape:

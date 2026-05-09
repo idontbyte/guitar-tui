@@ -406,23 +406,24 @@ internal sealed class IntervalFunctionMapTests
 
         foreach (var root in MusicTheory.ChromaticRoots)
         {
-            foreach (var startFret in new[] { 0, 3, 5, 7, 12, 19 })
+            foreach (var anchorFret in new[] { 0, 3, 5, 7, 12, 19 })
             {
-                AssertIntervalMap(root, startFret, library.BuildMap(root, startFret));
+                AssertIntervalMap(root, anchorFret, library.BuildMap(root, anchorFret));
             }
         }
 
         var clamped = library.BuildMap("A", 30);
-        TestAssert.Equal(IntervalFunctionMapLibrary.MaxStartFret, clamped.StartFret, "Interval map clamps high start frets");
+        TestAssert.Equal(IntervalFunctionMapLibrary.MaxStartFret, clamped.StartFret, "Interval map clamps high anchor frets");
     }
 
-    private static void AssertIntervalMap(string root, int startFret, FretboardDiagram diagram)
+    private static void AssertIntervalMap(string root, int anchorFret, FretboardDiagram diagram)
     {
         var rootPitch = MusicTheory.PitchClassFor(root);
-        TestAssert.Equal(startFret, diagram.StartFret, $"{root} interval map start fret");
+        var expectedStartFret = Math.Clamp(anchorFret - IntervalFunctionMapLibrary.DefaultWindowLength / 2, 0, IntervalFunctionMapLibrary.MaxStartFret);
+        TestAssert.Equal(expectedStartFret, diagram.StartFret, $"{root} interval map centers the anchor fret when possible");
         TestAssert.Equal(IntervalFunctionMapLibrary.DefaultWindowLength, diagram.Length, $"{root} interval map length");
         TestAssert.SequenceEqual(["E", "B", "G", "D", "A", "E"], diagram.Strings, $"{root} interval map string order");
-        TestAssert.Equal(30, diagram.Positions.Count, $"{root} interval map labels every fret in the window");
+        TestAssert.Equal(54, diagram.Positions.Count, $"{root} interval map labels every fret in the window");
 
         foreach (var position in diagram.Positions)
         {
