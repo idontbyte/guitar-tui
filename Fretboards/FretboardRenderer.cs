@@ -167,8 +167,11 @@ public sealed class FretboardRenderer
 
     private static string DisplayLabel(string label) => label switch
     {
+        "b2" => "♭2",
         "b3" => "♭3",
+        "#4" => "♯4",
         "b5" => "♭5",
+        "b6" => "♭6",
         "b7" => "♭7",
         _ => label
     };
@@ -177,12 +180,16 @@ public sealed class FretboardRenderer
     {
         "R" => Root,
         "2" => Pentatonic,
+        "b2" => Pentatonic,
         "3" => Third,
         "b3" => Third,
         "4" => Pentatonic,
+        "#4" => BlueNote,
         "b5" => BlueNote,
         "5" => Fifth,
         "6" => Pentatonic,
+        "b6" => Pentatonic,
+        "7" => Pentatonic,
         "b7" => Pentatonic,
         "X" => Muted,
         _ => Reset

@@ -6,6 +6,7 @@ namespace GuitarResourcesTui.Pentatonics;
 public sealed class PentatonicLibrary
 {
     private const int FretSearchLimit = 24;
+    private const int DiatonicWindowLength = 5;
 
     private static readonly IReadOnlyList<GuitarString> Tuning =
     [
@@ -22,7 +23,16 @@ public sealed class PentatonicLibrary
         PentatonicScaleKind.MajorPentatonic,
         PentatonicScaleKind.MinorPentatonic,
         PentatonicScaleKind.MajorBlues,
-        PentatonicScaleKind.MinorBlues
+        PentatonicScaleKind.MinorBlues,
+        PentatonicScaleKind.MajorScale,
+        PentatonicScaleKind.NaturalMinor,
+        PentatonicScaleKind.Dorian,
+        PentatonicScaleKind.Phrygian,
+        PentatonicScaleKind.Lydian,
+        PentatonicScaleKind.Mixolydian,
+        PentatonicScaleKind.Locrian,
+        PentatonicScaleKind.HarmonicMinor,
+        PentatonicScaleKind.MelodicMinor
     ];
 
     private static readonly IReadOnlyDictionary<PentatonicScaleKind, ScaleDefinition> Scales = new Dictionary<PentatonicScaleKind, ScaleDefinition>
@@ -66,7 +76,106 @@ public sealed class PentatonicLibrary
                 new(7, "5"),
                 new(10, "b7")
             ],
-            PentatonicScaleKind.MinorPentatonic)
+            PentatonicScaleKind.MinorPentatonic),
+        [PentatonicScaleKind.MajorScale] = new(
+            "Major scale (Ionian)",
+            [
+                new(0, "R"),
+                new(2, "2"),
+                new(4, "3"),
+                new(5, "4"),
+                new(7, "5"),
+                new(9, "6"),
+                new(11, "7")
+            ]),
+        [PentatonicScaleKind.NaturalMinor] = new(
+            "Natural minor (Aeolian)",
+            [
+                new(0, "R"),
+                new(2, "2"),
+                new(3, "b3"),
+                new(5, "4"),
+                new(7, "5"),
+                new(8, "b6"),
+                new(10, "b7")
+            ]),
+        [PentatonicScaleKind.Dorian] = new(
+            "Dorian",
+            [
+                new(0, "R"),
+                new(2, "2"),
+                new(3, "b3"),
+                new(5, "4"),
+                new(7, "5"),
+                new(9, "6"),
+                new(10, "b7")
+            ]),
+        [PentatonicScaleKind.Phrygian] = new(
+            "Phrygian",
+            [
+                new(0, "R"),
+                new(1, "b2"),
+                new(3, "b3"),
+                new(5, "4"),
+                new(7, "5"),
+                new(8, "b6"),
+                new(10, "b7")
+            ]),
+        [PentatonicScaleKind.Lydian] = new(
+            "Lydian",
+            [
+                new(0, "R"),
+                new(2, "2"),
+                new(4, "3"),
+                new(6, "#4"),
+                new(7, "5"),
+                new(9, "6"),
+                new(11, "7")
+            ]),
+        [PentatonicScaleKind.Mixolydian] = new(
+            "Mixolydian",
+            [
+                new(0, "R"),
+                new(2, "2"),
+                new(4, "3"),
+                new(5, "4"),
+                new(7, "5"),
+                new(9, "6"),
+                new(10, "b7")
+            ]),
+        [PentatonicScaleKind.Locrian] = new(
+            "Locrian",
+            [
+                new(0, "R"),
+                new(1, "b2"),
+                new(3, "b3"),
+                new(5, "4"),
+                new(6, "b5"),
+                new(8, "b6"),
+                new(10, "b7")
+            ]),
+        [PentatonicScaleKind.HarmonicMinor] = new(
+            "Harmonic minor",
+            [
+                new(0, "R"),
+                new(2, "2"),
+                new(3, "b3"),
+                new(5, "4"),
+                new(7, "5"),
+                new(8, "b6"),
+                new(11, "7")
+            ]),
+        [PentatonicScaleKind.MelodicMinor] = new(
+            "Melodic minor",
+            [
+                new(0, "R"),
+                new(2, "2"),
+                new(3, "b3"),
+                new(5, "4"),
+                new(7, "5"),
+                new(9, "6"),
+                new(11, "7")
+            ])
     };
 
     public IReadOnlyList<PentatonicShape> GetShapes(string root, ChordQuality quality)
@@ -109,6 +218,8 @@ public sealed class PentatonicLibrary
         PentatonicScaleKind.MinorPentatonic => PentatonicScaleKind.MajorPentatonic,
         PentatonicScaleKind.MajorBlues => PentatonicScaleKind.MinorBlues,
         PentatonicScaleKind.MinorBlues => PentatonicScaleKind.MajorBlues,
+        PentatonicScaleKind.MajorScale => PentatonicScaleKind.NaturalMinor,
+        PentatonicScaleKind.NaturalMinor => PentatonicScaleKind.MajorScale,
         _ => kind
     };
 
@@ -134,6 +245,11 @@ public sealed class PentatonicLibrary
         IReadOnlyList<PentatonicInterval> anchorIntervals,
         PentatonicAnchor anchor)
     {
+        if (anchorIntervals.Count >= 7)
+        {
+            return BuildWindowShapePositions(rootPitch, scaleIntervals, anchor.Fret, DiatonicWindowLength);
+        }
+
         var nextAnchorFret = NextAnchorFret(anchor, anchorIntervals);
         var targetCenter = (anchor.Fret + nextAnchorFret) / 2.0;
         var labelsByPitchClass = scaleIntervals
@@ -151,6 +267,32 @@ public sealed class PentatonicLibrary
             var pair = PickPairForBox(anchorPositions, anchor.Fret, nextAnchorFret, targetCenter);
 
             foreach (var fret in stringPositions.Where(fret => fret >= pair[0] && fret <= pair[1]))
+            {
+                var pitch = MusicTheory.Normalize(Tuning[displayString].PitchClass + fret);
+                var label = labelsByPitchClass[pitch];
+                positions.Add(new FretPosition(displayString, fret, label, SourceStringIndex: displayString));
+            }
+        }
+
+        return positions;
+    }
+
+    private static IReadOnlyList<FretPosition> BuildWindowShapePositions(
+        int rootPitch,
+        IReadOnlyList<PentatonicInterval> scaleIntervals,
+        int startFret,
+        int length)
+    {
+        var labelsByPitchClass = scaleIntervals
+            .ToDictionary(interval => MusicTheory.Normalize(rootPitch + interval.Semitones), interval => interval.Label);
+        var scalePitchClasses = labelsByPitchClass.Keys.ToHashSet();
+        var positions = new List<FretPosition>();
+
+        for (var displayString = 0; displayString < Tuning.Count; displayString++)
+        {
+            var stringPositions = ScalePositionsForString(Tuning[displayString], scalePitchClasses);
+
+            foreach (var fret in stringPositions.Where(fret => fret >= startFret && fret < startFret + length))
             {
                 var pitch = MusicTheory.Normalize(Tuning[displayString].PitchClass + fret);
                 var label = labelsByPitchClass[pitch];
@@ -239,6 +381,15 @@ public sealed class PentatonicLibrary
         {
             "Major pentatonic" => PentatonicScaleKind.MajorPentatonic,
             "Minor pentatonic" => PentatonicScaleKind.MinorPentatonic,
+            "Major scale (Ionian)" => PentatonicScaleKind.MajorScale,
+            "Natural minor (Aeolian)" => PentatonicScaleKind.NaturalMinor,
+            "Dorian" => PentatonicScaleKind.Dorian,
+            "Phrygian" => PentatonicScaleKind.Phrygian,
+            "Lydian" => PentatonicScaleKind.Lydian,
+            "Mixolydian" => PentatonicScaleKind.Mixolydian,
+            "Locrian" => PentatonicScaleKind.Locrian,
+            "Harmonic minor" => PentatonicScaleKind.HarmonicMinor,
+            "Melodic minor" => PentatonicScaleKind.MelodicMinor,
             _ => throw new InvalidOperationException($"Scale {Name} needs an explicit anchor kind.")
         };
     }

@@ -95,7 +95,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
             Console.Clear();
             WriteHeader($"{root} {PentatonicLibrary.NameFor(scaleKind)} shapes");
-            Console.WriteLine($"Labels: {Root}R{Reset} = root, intervals show scale degrees ({Pentatonic}2/4/6/b7{Reset}, {Third}3/b3{Reset}, {BlueNote}b5{Reset}, {Fifth}5{Reset})");
+            Console.WriteLine($"Labels: {Root}R{Reset} = root, intervals show scale degrees ({Pentatonic}2/4/6/7/flats{Reset}, {Third}3/b3{Reset}, {BlueNote}#4/b5{Reset}, {Fifth}5{Reset})");
             Console.WriteLine("T = toggle major/minor, Q = back");
             Console.WriteLine();
 

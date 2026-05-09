@@ -5,5 +5,14 @@ public enum PentatonicScaleKind
     MajorPentatonic,
     MinorPentatonic,
     MajorBlues,
-    MinorBlues
+    MinorBlues,
+    MajorScale,
+    NaturalMinor,
+    Dorian,
+    Phrygian,
+    Lydian,
+    Mixolydian,
+    Locrian,
+    HarmonicMinor,
+    MelodicMinor
 }

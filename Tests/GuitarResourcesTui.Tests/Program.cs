@@ -153,7 +153,16 @@ internal sealed class PentatonicShapeTests
         [PentatonicScaleKind.MajorPentatonic] = [0, 2, 4, 7, 9],
         [PentatonicScaleKind.MinorPentatonic] = [0, 3, 5, 7, 10],
         [PentatonicScaleKind.MajorBlues] = [0, 2, 3, 4, 7, 9],
-        [PentatonicScaleKind.MinorBlues] = [0, 3, 5, 6, 7, 10]
+        [PentatonicScaleKind.MinorBlues] = [0, 3, 5, 6, 7, 10],
+        [PentatonicScaleKind.MajorScale] = [0, 2, 4, 5, 7, 9, 11],
+        [PentatonicScaleKind.NaturalMinor] = [0, 2, 3, 5, 7, 8, 10],
+        [PentatonicScaleKind.Dorian] = [0, 2, 3, 5, 7, 9, 10],
+        [PentatonicScaleKind.Phrygian] = [0, 1, 3, 5, 7, 8, 10],
+        [PentatonicScaleKind.Lydian] = [0, 2, 4, 6, 7, 9, 11],
+        [PentatonicScaleKind.Mixolydian] = [0, 2, 4, 5, 7, 9, 10],
+        [PentatonicScaleKind.Locrian] = [0, 1, 3, 5, 6, 8, 10],
+        [PentatonicScaleKind.HarmonicMinor] = [0, 2, 3, 5, 7, 8, 11],
+        [PentatonicScaleKind.MelodicMinor] = [0, 2, 3, 5, 7, 9, 11]
     };
 
     private static readonly IReadOnlyDictionary<PentatonicScaleKind, IReadOnlyDictionary<int, string>> ExpectedLabels = new Dictionary<PentatonicScaleKind, IReadOnlyDictionary<int, string>>
@@ -191,6 +200,96 @@ internal sealed class PentatonicShapeTests
             [6] = "b5",
             [7] = "5",
             [10] = "b7"
+        },
+        [PentatonicScaleKind.MajorScale] = new Dictionary<int, string>
+        {
+            [0] = "R",
+            [2] = "2",
+            [4] = "3",
+            [5] = "4",
+            [7] = "5",
+            [9] = "6",
+            [11] = "7"
+        },
+        [PentatonicScaleKind.NaturalMinor] = new Dictionary<int, string>
+        {
+            [0] = "R",
+            [2] = "2",
+            [3] = "b3",
+            [5] = "4",
+            [7] = "5",
+            [8] = "b6",
+            [10] = "b7"
+        },
+        [PentatonicScaleKind.Dorian] = new Dictionary<int, string>
+        {
+            [0] = "R",
+            [2] = "2",
+            [3] = "b3",
+            [5] = "4",
+            [7] = "5",
+            [9] = "6",
+            [10] = "b7"
+        },
+        [PentatonicScaleKind.Phrygian] = new Dictionary<int, string>
+        {
+            [0] = "R",
+            [1] = "b2",
+            [3] = "b3",
+            [5] = "4",
+            [7] = "5",
+            [8] = "b6",
+            [10] = "b7"
+        },
+        [PentatonicScaleKind.Lydian] = new Dictionary<int, string>
+        {
+            [0] = "R",
+            [2] = "2",
+            [4] = "3",
+            [6] = "#4",
+            [7] = "5",
+            [9] = "6",
+            [11] = "7"
+        },
+        [PentatonicScaleKind.Mixolydian] = new Dictionary<int, string>
+        {
+            [0] = "R",
+            [2] = "2",
+            [4] = "3",
+            [5] = "4",
+            [7] = "5",
+            [9] = "6",
+            [10] = "b7"
+        },
+        [PentatonicScaleKind.Locrian] = new Dictionary<int, string>
+        {
+            [0] = "R",
+            [1] = "b2",
+            [3] = "b3",
+            [5] = "4",
+            [6] = "b5",
+            [8] = "b6",
+            [10] = "b7"
+        },
+        [PentatonicScaleKind.HarmonicMinor] = new Dictionary<int, string>
+        {
+            [0] = "R",
+            [2] = "2",
+            [3] = "b3",
+            [5] = "4",
+            [7] = "5",
+            [8] = "b6",
+            [11] = "7"
+        },
+        [PentatonicScaleKind.MelodicMinor] = new Dictionary<int, string>
+        {
+            [0] = "R",
+            [2] = "2",
+            [3] = "b3",
+            [5] = "4",
+            [7] = "5",
+            [9] = "6",
+            [11] = "7"
         }
     };
 
@@ -205,8 +304,9 @@ internal sealed class PentatonicShapeTests
             foreach (var scaleKind in PentatonicLibrary.ScaleKinds)
             {
                 var shapes = library.GetShapes(root, scaleKind);
-                TestAssert.Equal(5, shapes.Count, $"{root} {scaleKind} has five scale shapes");
-                TestAssert.SequenceEqual([1, 2, 3, 4, 5], shapes.Select(shape => shape.Number), $"{root} {scaleKind} shape numbering");
+                var expectedShapeCount = ExpectedShapeCount(scaleKind);
+                TestAssert.Equal(expectedShapeCount, shapes.Count, $"{root} {scaleKind} has expected scale shape count");
+                TestAssert.SequenceEqual(Enumerable.Range(1, expectedShapeCount), shapes.Select(shape => shape.Number), $"{root} {scaleKind} shape numbering");
                 AssertRendererWraps(root, scaleKind, shapes);
 
                 foreach (var shape in shapes)
@@ -216,6 +316,15 @@ internal sealed class PentatonicShapeTests
             }
         }
     }
+
+    private static int ExpectedShapeCount(PentatonicScaleKind scaleKind) => scaleKind switch
+    {
+        PentatonicScaleKind.MajorPentatonic => 5,
+        PentatonicScaleKind.MinorPentatonic => 5,
+        PentatonicScaleKind.MajorBlues => 5,
+        PentatonicScaleKind.MinorBlues => 5,
+        _ => 7
+    };
 
     private static void AssertRendererWraps(string root, PentatonicScaleKind scaleKind, IReadOnlyList<PentatonicShape> shapes)
     {
