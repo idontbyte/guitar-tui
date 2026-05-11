@@ -5,6 +5,7 @@ using GuitarResourcesTui.Pentatonics;
 using GuitarResourcesTui.Triads;
 
 new TriadInversionTests().RunAll();
+new TriadProgressionGameTests().RunAll();
 new PentatonicShapeTests().RunAll();
 new IntervalFunctionMapTests().RunAll();
 Console.WriteLine("All tests passed.");
@@ -100,6 +101,74 @@ internal sealed class TriadInversionTests
             Assert(position.Fret >= shape.Diagram.StartFret, $"{groupingName} {shape.InversionName} position starts inside diagram");
             Assert(position.Fret < shape.Diagram.StartFret + shape.Diagram.Length, $"{groupingName} {shape.InversionName} position ends inside diagram");
         }
+    }
+
+    private static void Assert(bool condition, string message)
+    {
+        if (!condition)
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    private static void AssertEqual<T>(T expected, T actual, string message)
+    {
+        if (!EqualityComparer<T>.Default.Equals(expected, actual))
+        {
+            throw new InvalidOperationException($"{message}. Expected {expected}, got {actual}.");
+        }
+    }
+
+    private static void AssertSequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual, string message)
+    {
+        var expectedArray = expected.ToArray();
+        var actualArray = actual.ToArray();
+
+        if (!expectedArray.SequenceEqual(actualArray))
+        {
+            throw new InvalidOperationException($"{message}. Expected [{string.Join(", ", expectedArray)}], got [{string.Join(", ", actualArray)}].");
+        }
+    }
+
+    private static int LabelSortOrder(string label) => label switch
+    {
+        "R" => 0,
+        "3" => 1,
+        "5" => 2,
+        _ => 99
+    };
+}
+
+internal sealed class TriadProgressionGameTests
+{
+    public void RunAll()
+    {
+        var game = new TriadProgressionGameLibrary(new TriadInversionLibrary(), new Random(7));
+
+        var progression = game.ParseProgression("Am, C G D");
+        AssertEqual(4, progression.Count, "progression parser accepts commas and spaces");
+        AssertEqual("A", progression[0].Root, "Am root");
+        AssertEqual(ChordQuality.Minor, progression[0].Quality, "Am quality");
+        AssertEqual("C", progression[1].DisplayName, "C display name");
+        AssertEqual("G", progression[2].DisplayName, "G display name");
+        AssertEqual("D", progression[3].DisplayName, "D display name");
+        AssertEqual("A#", game.ParseProgression("Bb")[0].Root, "flat roots normalize to sharp names");
+
+        var phrase = game.BuildPhrase(progression);
+        AssertEqual(progression.Count, phrase.Count, "phrase has one triad per chord");
+
+        for (var index = 0; index < phrase.Count; index++)
+        {
+            var item = phrase[index];
+            AssertEqual(progression[index], item.Chord, "phrase keeps progression order");
+            Assert(item.Shape.MaxFret - item.Shape.MinFret <= 3, $"{item.Title} remains compact");
+            AssertSequenceEqual(["E", "B", "G", "D", "A", "E"], item.Diagram.Strings, $"{item.Title} renders on the full fretboard");
+            AssertSequenceEqual(["R", "3", "5"], item.Diagram.Positions.Select(position => position.Label).OrderBy(LabelSortOrder), $"{item.Title} contains a full triad");
+        }
+
+        var nextPhrase = game.BuildPhrase(progression, phrase[^1]);
+        AssertEqual(progression.Count, nextPhrase.Count, "next phrase has one triad per chord");
+        Assert(Math.Abs(nextPhrase[0].CenterFret - phrase[^1].CenterFret) <= 6, "next phrase starts near previous phrase");
     }
 
     private static void Assert(bool condition, string message)

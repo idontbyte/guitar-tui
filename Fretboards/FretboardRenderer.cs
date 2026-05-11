@@ -9,6 +9,7 @@ public sealed class FretboardRenderer
     private const string Reset = "\e[0m";
     private const string Dim = "\e[2m";
     private const string FretNumber = "\e[38;5;244m";
+    private const string Nut = "\e[38;5;230m";
     private const string StringName = "\e[38;5;117m";
     private const string Root = "\e[1;38;5;46m";
     private const string Third = "\e[1;38;5;220m";
@@ -16,10 +17,16 @@ public sealed class FretboardRenderer
     private const string Pentatonic = "\e[1;38;5;213m";
     private const string BlueNote = "\e[1;38;5;51m";
     private const string Muted = "\e[1;38;5;196m";
+    private const string HighlightRoot = "\e[1;38;5;16;48;5;46m";
+    private const string HighlightThird = "\e[1;38;5;16;48;5;220m";
+    private const string HighlightFifth = "\e[1;38;5;16;48;5;39m";
+    private const string HighlightOther = "\e[1;38;5;16;48;5;231m";
+    private const string HighlightEmpty = "\e[38;5;236;48;5;235m";
+    private const string HighlightTitle = "\e[1;38;5;16;48;5;230m";
 
     private static readonly Regex AnsiPattern = new(@"\e\[[0-9;]*m", RegexOptions.Compiled);
 
-    public IReadOnlyList<string> Render(FretboardDiagram diagram)
+    public IReadOnlyList<string> Render(FretboardDiagram diagram, bool highlighted = false)
     {
         if (diagram.Length < 1)
         {
@@ -37,20 +44,25 @@ public sealed class FretboardRenderer
 
         for (var stringIndex = 0; stringIndex < diagram.Strings.Count; stringIndex++)
         {
-            lines.Add(RenderString(diagram, stringIndex, markers));
+            lines.Add(RenderString(diagram, stringIndex, markers, highlighted));
         }
 
         return lines;
     }
 
-    public IReadOnlyList<string> RenderMany(IReadOnlyList<(string Title, FretboardDiagram Diagram)> diagrams, int? maxWidth = null)
+    public IReadOnlyList<string> RenderMany(
+        IReadOnlyList<(string Title, FretboardDiagram Diagram)> diagrams,
+        int? maxWidth = null,
+        IReadOnlySet<int>? highlightedIndexes = null)
     {
         if (diagrams.Count == 0)
         {
             return Array.Empty<string>();
         }
 
-        var rendered = diagrams.Select(RenderTitledDiagram).ToArray();
+        var rendered = diagrams
+            .Select((diagram, index) => RenderTitledDiagram(diagram, highlightedIndexes?.Contains(index) == true))
+            .ToArray();
         var rows = maxWidth is null
             ? [rendered]
             : WrapRenderedDiagrams(rendered, maxWidth.Value);
@@ -70,11 +82,13 @@ public sealed class FretboardRenderer
         return output;
     }
 
-    private string[] RenderTitledDiagram((string Title, FretboardDiagram Diagram) item)
+    private string[] RenderTitledDiagram((string Title, FretboardDiagram Diagram) item, bool highlighted)
     {
-        var body = Render(item.Diagram);
+        var body = Render(item.Diagram, highlighted);
         var width = Math.Max(VisibleLength(item.Title), body.Max(VisibleLength));
-        var title = PadRightVisible(item.Title, width);
+        var title = highlighted
+            ? Color(PadRightVisible(item.Title, width), HighlightTitle)
+            : PadRightVisible(item.Title, width);
         return [title, .. body.Select(line => PadRightVisible(line, width))];
     }
 
@@ -128,7 +142,7 @@ public sealed class FretboardRenderer
 
         for (var fret = startFret; fret < startFret + length; fret++)
         {
-            builder.Append(Color(fret.ToString().PadLeft(3).PadRight(5), FretNumber));
+            builder.Append(Color(fret.ToString().PadLeft(3).PadRight(5), fret == 0 ? Nut : FretNumber));
         }
 
         return builder.ToString().TrimEnd();
@@ -137,11 +151,12 @@ public sealed class FretboardRenderer
     private static string RenderString(
         FretboardDiagram diagram,
         int stringIndex,
-        IReadOnlyDictionary<(int StringIndex, int Fret), FretPosition> markers)
+        IReadOnlyDictionary<(int StringIndex, int Fret), FretPosition> markers,
+        bool highlighted)
     {
         var builder = new StringBuilder();
         builder.Append(Color(diagram.Strings[stringIndex].PadLeft(2), StringName));
-        builder.Append(Color(" |", Dim));
+        builder.Append(Color(" |", diagram.StartFret == 0 ? Nut : Dim));
 
         for (var fret = diagram.StartFret; fret < diagram.StartFret + diagram.Length; fret++)
         {
@@ -150,11 +165,11 @@ public sealed class FretboardRenderer
                 var label = position.IsMuted ? "X" : position.Label;
                 var displayLabel = DisplayLabel(label);
                 var paddedLabel = displayLabel.Length > 3 ? displayLabel[..3] : displayLabel.PadLeft(3).PadRight(4);
-                builder.Append(Color(paddedLabel, ColorFor(label)));
+                builder.Append(Color(paddedLabel, ColorFor(label, highlighted)));
             }
             else
             {
-                builder.Append(Color("----", Dim));
+                builder.Append(Color("----", highlighted ? HighlightEmpty : Dim));
             }
 
             builder.Append(Color("|", Dim));
@@ -176,7 +191,21 @@ public sealed class FretboardRenderer
         _ => label
     };
 
-    private static string ColorFor(string label) => label switch
+    private static string ColorFor(string label, bool highlighted = false)
+    {
+        if (highlighted)
+        {
+            return label switch
+            {
+                "R" => HighlightRoot,
+                "3" => HighlightThird,
+                "b3" => HighlightThird,
+                "5" => HighlightFifth,
+                _ => HighlightOther
+            };
+        }
+
+        return label switch
     {
         "R" => Root,
         "2" => Pentatonic,
@@ -194,6 +223,7 @@ public sealed class FretboardRenderer
         "X" => Muted,
         _ => Reset
     };
+    }
 
     private static int VisibleLength(string value) => AnsiPattern.Replace(value, string.Empty).Length;
 
