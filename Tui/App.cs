@@ -61,14 +61,16 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
     {
         Console.Clear();
         WriteHeader("Triad progression game");
-        Console.WriteLine("Enter chords separated by commas or spaces. Use m for minor, for example Am, C, G, D.");
-        Console.Write("Progression > ");
-        var progressionInput = Console.ReadLine()?.Trim() ?? string.Empty;
+        var setup = ReadTriadProgressionSetup();
+        if (setup is null)
+        {
+            return;
+        }
 
         IReadOnlyList<ChordSymbol> progression;
         try
         {
-            progression = _triadGame.ParseProgression(progressionInput);
+            progression = _triadGame.ParseProgression(setup.ProgressionText);
         }
         catch (ArgumentException exception)
         {
@@ -77,31 +79,35 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             return;
         }
 
-        var bpm = ReadInt("BPM", defaultValue: 80, min: 30, max: 240);
-        var beatsPerChord = ReadInt("Clicks per chord", defaultValue: 2, min: 1, max: 8);
+        var bpm = setup.Bpm ?? ReadInt("BPM", defaultValue: 80, min: 30, max: 240);
+        var timeSignature = setup.TimeSignature ?? ReadTimeSignature();
+        var chordLengths = setup.ChordLengths ?? ReadChordLengths(progression, timeSignature);
+
         var clickEnabled = true;
-        var synthEnabled = true;
+        var backingEnabled = true;
 
         var currentPhrase = _triadGame.BuildPhrase(progression);
         var nextPhrase = _triadGame.BuildPhrase(progression, currentPhrase[^1]);
         var beat = 0;
         var paused = false;
         var lastSynthChordIndex = -1;
+        var phraseLength = chordLengths.Sum();
         var synthProcesses = new List<Process>();
 
         try
         {
             while (true)
             {
-                var chordIndex = beat / beatsPerChord;
-                var beatWithinChord = beat % beatsPerChord;
+                var chordIndex = ChordIndexAtBeat(chordLengths, beat);
+                var beatWithinChord = beat - StartBeatForChord(chordLengths, chordIndex);
+                var beatWithinBar = beat % timeSignature.BeatsPerBar;
 
-                RenderTriadProgressionGame(currentPhrase, nextPhrase, chordIndex, beatWithinChord, beatsPerChord, bpm, clickEnabled, synthEnabled, paused);
+                RenderTriadProgressionGame(setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
 
-                if (!paused && synthEnabled && chordIndex != lastSynthChordIndex)
+                if (!paused && backingEnabled && chordIndex != lastSynthChordIndex)
                 {
                     CleanupFinishedProcesses(synthProcesses);
-                    var synthProcess = PlaySynthChord(currentPhrase[chordIndex].Chord, beatsPerChord, bpm);
+                    var synthProcess = PlayBackingChord(currentPhrase[chordIndex].Chord, chordLengths[chordIndex], bpm, timeSignature);
                     if (synthProcess is not null)
                     {
                         synthProcesses.Add(synthProcess);
@@ -111,7 +117,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
                 if (!paused && clickEnabled)
                 {
-                    Click(beatWithinChord == 0);
+                    Click(beatWithinBar == 0);
                 }
 
                 var interval = TimeSpan.FromMinutes(1d / bpm);
@@ -137,15 +143,15 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                                 {
                                     lastSynthChordIndex = -1;
                                 }
-                                RenderTriadProgressionGame(currentPhrase, nextPhrase, chordIndex, beatWithinChord, beatsPerChord, bpm, clickEnabled, synthEnabled, paused);
+                                RenderTriadProgressionGame(setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
                                 break;
                             case ConsoleKey.M:
                                 clickEnabled = !clickEnabled;
-                                RenderTriadProgressionGame(currentPhrase, nextPhrase, chordIndex, beatWithinChord, beatsPerChord, bpm, clickEnabled, synthEnabled, paused);
+                                RenderTriadProgressionGame(setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
                                 break;
                             case ConsoleKey.S:
-                                synthEnabled = !synthEnabled;
-                                if (!synthEnabled)
+                                backingEnabled = !backingEnabled;
+                                if (!backingEnabled)
                                 {
                                     StopProcesses(synthProcesses);
                                 }
@@ -153,11 +159,11 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                                 {
                                     lastSynthChordIndex = -1;
                                 }
-                                RenderTriadProgressionGame(currentPhrase, nextPhrase, chordIndex, beatWithinChord, beatsPerChord, bpm, clickEnabled, synthEnabled, paused);
+                                RenderTriadProgressionGame(setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
                                 break;
                             case ConsoleKey.N:
                             case ConsoleKey.RightArrow:
-                                beat = (chordIndex + 1) * beatsPerChord;
+                                beat = StartBeatForChord(chordLengths, chordIndex + 1);
                                 goto BeatAdvancedManually;
                         }
                     }
@@ -171,7 +177,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                 }
 
             BeatAdvancedManually:
-                if (beat >= currentPhrase.Count * beatsPerChord)
+                if (beat >= phraseLength)
                 {
                     currentPhrase = nextPhrase;
                     nextPhrase = _triadGame.BuildPhrase(progression, currentPhrase[^1]);
@@ -184,6 +190,74 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         {
             StopProcesses(synthProcesses);
         }
+    }
+
+    private TriadProgressionSetup? ReadTriadProgressionSetup()
+    {
+        Console.WriteLine("Choose one of the 100 built-in song presets, or enter your own.");
+        Console.WriteLine("C. Custom progression");
+        foreach (var preset in TriadProgressionGameLibrary.PresetProgressions)
+        {
+            Console.WriteLine(preset.MenuText);
+        }
+        Console.WriteLine();
+        Console.Write("Progression number or C > ");
+
+        while (true)
+        {
+            var input = Console.ReadLine()?.Trim() ?? string.Empty;
+            if (input.Equals("C", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Enter chords separated by commas or spaces. Use m for minor, for example Am, C, G, D.");
+                Console.Write("Progression > ");
+                return new TriadProgressionSetup("Custom progression", Console.ReadLine()?.Trim() ?? string.Empty);
+            }
+
+            if (input.Equals("B", StringComparison.OrdinalIgnoreCase) || input.Equals("Q", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (int.TryParse(input, out var presetNumber))
+            {
+                var preset = _triadGame.GetPresetProgression(presetNumber);
+                if (preset is not null)
+                {
+                    Console.WriteLine($"Selected {preset.MenuText}");
+                    return new TriadProgressionSetup(preset.Name, preset.ProgressionText, preset.Bpm, preset.TimeSignature, preset.ChordLengths);
+                }
+            }
+
+            Console.Write("Choose 1-100, C for custom, or B to go back > ");
+        }
+    }
+
+    private IReadOnlyList<int> ReadChordLengths(IReadOnlyList<ChordSymbol> progression, TimeSignature timeSignature)
+    {
+        var defaultBeatsPerChord = ReadInt("Default chord length in beats", defaultValue: timeSignature.BeatsPerBar, min: 1, max: 32);
+        Console.WriteLine("Enter one length per chord, or leave blank to use the default for every chord.");
+        Console.WriteLine($"Chords: {string.Join(" ", progression.Select(chord => chord.DisplayName))}");
+
+        while (true)
+        {
+            Console.Write("Chord lengths > ");
+            var lengthInput = Console.ReadLine()?.Trim() ?? string.Empty;
+            try
+            {
+                return _triadGame.ParseChordLengths(lengthInput, progression.Count, defaultBeatsPerChord);
+            }
+            catch (ArgumentException exception)
+            {
+                Console.WriteLine(exception.Message);
+            }
+        }
+    }
+
+    private static TimeSignature ReadTimeSignature()
+    {
+        var beatsPerBar = ReadInt("Time signature beats per bar", defaultValue: 4, min: 1, max: 12);
+        var beatUnitChoice = ReadMenuChoice("Time signature beat unit", ["4", "8"], allowBack: false);
+        return new TimeSignature(beatsPerBar, int.Parse(beatUnitChoice!));
     }
 
     private void ShowIntervalFunctionMap()
@@ -438,26 +512,30 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
     }
 
     private void RenderTriadProgressionGame(
+        string title,
         IReadOnlyList<TriadPracticeItem> currentPhrase,
         IReadOnlyList<TriadPracticeItem> nextPhrase,
+        IReadOnlyList<int> chordLengths,
         int chordIndex,
         int beatWithinChord,
-        int beatsPerChord,
+        int beatWithinBar,
+        TimeSignature timeSignature,
         int bpm,
         bool clickEnabled,
-        bool synthEnabled,
+        bool backingEnabled,
         bool paused)
     {
         Console.Clear();
         WriteHeader("Triad progression game");
+        Console.WriteLine($"Song: {title}");
         Console.WriteLine($"Progression: {string.Join(" - ", currentPhrase.Select(item => item.Chord.DisplayName))}");
-        Console.WriteLine($"BPM: {bpm}  Clicks/chord: {beatsPerChord}  Click: {(clickEnabled ? "on" : "muted")}  Synth: {(synthEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
-        Console.WriteLine("Space = pause, M = mute click, S = mute synth, N = next chord, B/Q = main menu");
+        Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
+        Console.WriteLine("Space = pause, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
         Console.WriteLine();
 
-        Console.WriteLine($"Now: {currentPhrase[chordIndex].Chord.DisplayName}  click {beatWithinChord + 1}/{beatsPerChord}");
+        Console.WriteLine($"Now: {currentPhrase[chordIndex].Chord.DisplayName}  chord beat {beatWithinChord + 1}/{chordLengths[chordIndex]}  bar beat {beatWithinBar + 1}/{timeSignature.BeatsPerBar}");
         var currentDiagrams = currentPhrase
-            .Select((item, index) => ($"{(index == chordIndex ? "> " : "  ")}{item.Title}", item.Diagram))
+            .Select((item, index) => ($"{(index == chordIndex ? "> " : "  ")}{item.Title} [{chordLengths[index]} beat{Pluralize(chordLengths[index])}]", item.Diagram))
             .ToArray();
 
         foreach (var line in _renderer.RenderMany(currentDiagrams, GetUsableConsoleWidth(), new HashSet<int> { chordIndex }))
@@ -468,7 +546,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         Console.WriteLine();
         Console.WriteLine("Up next");
         var nextDiagrams = nextPhrase
-            .Select(item => ($"  {item.Title}", item.Diagram))
+            .Select((item, index) => ($"  {item.Title} [{chordLengths[index]} beat{Pluralize(chordLengths[index])}]", item.Diagram))
             .ToArray();
 
         foreach (var line in _renderer.RenderMany(nextDiagrams, GetUsableConsoleWidth()))
@@ -476,6 +554,42 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             Console.WriteLine(line);
         }
     }
+
+    private static int ChordIndexAtBeat(IReadOnlyList<int> chordLengths, int beat)
+    {
+        var start = 0;
+        for (var index = 0; index < chordLengths.Count; index++)
+        {
+            start += chordLengths[index];
+            if (beat < start)
+            {
+                return index;
+            }
+        }
+
+        return chordLengths.Count - 1;
+    }
+
+    private static int StartBeatForChord(IReadOnlyList<int> chordLengths, int chordIndex)
+    {
+        var clampedIndex = Math.Clamp(chordIndex, 0, chordLengths.Count);
+        var start = 0;
+        for (var index = 0; index < clampedIndex; index++)
+        {
+            start += chordLengths[index];
+        }
+
+        return start;
+    }
+
+    private static string Pluralize(int count) => count == 1 ? string.Empty : "s";
+
+    private sealed record TriadProgressionSetup(
+        string Title,
+        string ProgressionText,
+        int? Bpm = null,
+        TimeSignature? TimeSignature = null,
+        IReadOnlyList<int>? ChordLengths = null);
 
     private static void Click(bool accent)
     {
@@ -520,7 +634,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         });
     }
 
-    private static Process? PlaySynthChord(ChordSymbol chord, int beatsPerChord, int bpm)
+    private static Process? PlayBackingChord(ChordSymbol chord, int beatsPerChord, int bpm, TimeSignature timeSignature)
     {
         if (!OperatingSystem.IsMacOS())
         {
@@ -529,10 +643,10 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
         var durationSeconds = beatsPerChord * 60d / bpm;
         var overlapSeconds = Math.Clamp(durationSeconds * 0.22, 0.18, 0.45);
-        var path = SynthChordFilePath(chord, durationSeconds, overlapSeconds);
+        var path = BackingChordFilePath(chord, durationSeconds, overlapSeconds, bpm, timeSignature);
         if (!File.Exists(path))
         {
-            WriteSynthChordWav(path, chord, durationSeconds, overlapSeconds);
+            WriteBackingChordWav(path, chord, beatsPerChord, bpm, timeSignature, durationSeconds, overlapSeconds);
         }
 
         try
@@ -551,17 +665,24 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         }
     }
 
-    private static string SynthChordFilePath(ChordSymbol chord, double durationSeconds, double overlapSeconds)
+    private static string BackingChordFilePath(ChordSymbol chord, double durationSeconds, double overlapSeconds, int bpm, TimeSignature timeSignature)
     {
-        var directory = Path.Combine(Path.GetTempPath(), "guitar-tui-synth");
+        var directory = Path.Combine(Path.GetTempPath(), "guitar-tui-backing");
         Directory.CreateDirectory(directory);
 
         var durationKey = Math.Round(durationSeconds, 3).ToString("0.000").Replace('.', '-');
         var overlapKey = Math.Round(overlapSeconds, 3).ToString("0.000").Replace('.', '-');
-        return Path.Combine(directory, $"{chord.Root.Replace('#', 's')}-{chord.Quality}-{durationKey}-{overlapKey}-v2.wav");
+        return Path.Combine(directory, $"{chord.Root.Replace('#', 's')}-{chord.Quality}-{bpm}-{timeSignature.DisplayName.Replace('/', '-')}-{durationKey}-{overlapKey}-v4.wav");
     }
 
-    private static void WriteSynthChordWav(string path, ChordSymbol chord, double durationSeconds, double overlapSeconds)
+    private static void WriteBackingChordWav(
+        string path,
+        ChordSymbol chord,
+        int beatsPerChord,
+        int bpm,
+        TimeSignature timeSignature,
+        double durationSeconds,
+        double overlapSeconds)
     {
         const int sampleRate = 44100;
         const short channels = 1;
@@ -569,7 +690,9 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         var totalDurationSeconds = durationSeconds + overlapSeconds;
         var samples = Math.Max(1, (int)(sampleRate * totalDurationSeconds));
         var dataSize = samples * channels * bitsPerSample / 8;
-        var tones = SynthFrequencies(chord).ToArray();
+        var guitarFrequencies = GuitarChordFrequencies(chord).ToArray();
+        var bassFrequency = BassFrequency(chord);
+        var secondsPerBeat = 60d / bpm;
 
         using var stream = File.Create(path);
         using var writer = new BinaryWriter(stream, Encoding.ASCII);
@@ -591,27 +714,43 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         for (var sample = 0; sample < samples; sample++)
         {
             var time = sample / (double)sampleRate;
-            var envelope = Envelope(time, totalDurationSeconds, durationSeconds);
+            var beatPosition = time / secondsPerBeat;
+            var barBeat = (int)Math.Floor(beatPosition) % timeSignature.BeatsPerBar;
             var value = 0d;
 
-            foreach (var frequency in tones)
+            for (var beat = 0; beat < beatsPerChord; beat++)
             {
-                value += Math.Sin(2d * Math.PI * frequency * time);
-                value += 0.35d * Math.Sin(2d * Math.PI * frequency * 2d * time);
+                var beatStart = beat * secondsPerBeat;
+                var beatOffset = time - beatStart;
+                if (beatOffset < 0 || beatOffset > secondsPerBeat)
+                {
+                    continue;
+                }
+
+                var accent = beat % timeSignature.BeatsPerBar == 0 ? 1.15 : 0.82;
+                value += DrumKit(beatOffset, barBeat, timeSignature.BeatsPerBar) * 0.32;
+                value += BassNote(bassFrequency, beatOffset) * (beat % timeSignature.BeatsPerBar == 0 ? 0.34 : 0.2);
+
+                foreach (var (frequency, stringIndex) in guitarFrequencies.Select((frequency, index) => (frequency, index)))
+                {
+                    var stringDelay = stringIndex * 0.012;
+                    value += GuitarString(frequency, beatOffset - stringDelay) * accent * 0.18;
+                }
             }
 
-            value = Math.Tanh(value / tones.Length) * envelope * 0.22d;
+            value += ChordWash(guitarFrequencies, time, totalDurationSeconds, durationSeconds) * 0.08;
+            value = Math.Tanh(value) * 0.75d;
             writer.Write((short)(value * short.MaxValue));
         }
     }
 
-    private static IEnumerable<double> SynthFrequencies(ChordSymbol chord)
+    private static IEnumerable<double> GuitarChordFrequencies(ChordSymbol chord)
     {
         var rootPitch = MusicTheory.PitchClassFor(chord.Root);
         var thirdInterval = chord.Quality == ChordQuality.Major ? 4 : 3;
-        var midiRoot = 48 + rootPitch;
+        var midiRoot = 52 + rootPitch;
 
-        while (midiRoot > 59)
+        while (midiRoot > 64)
         {
             midiRoot -= 12;
         }
@@ -621,8 +760,103 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             MidiToFrequency(midiRoot),
             MidiToFrequency(midiRoot + thirdInterval),
             MidiToFrequency(midiRoot + 7),
-            MidiToFrequency(midiRoot + 12)
+            MidiToFrequency(midiRoot + 12),
+            MidiToFrequency(midiRoot + thirdInterval + 12),
+            MidiToFrequency(midiRoot + 19)
         ];
+    }
+
+    private static double BassFrequency(ChordSymbol chord)
+    {
+        var midiRoot = 36 + MusicTheory.PitchClassFor(chord.Root);
+        while (midiRoot > 47)
+        {
+            midiRoot -= 12;
+        }
+
+        return MidiToFrequency(midiRoot);
+    }
+
+    private static double GuitarString(double frequency, double time)
+    {
+        if (time < 0)
+        {
+            return 0;
+        }
+
+        var envelope = Math.Exp(-time * 5.2) * Math.Min(1, time / 0.01);
+        var shimmer = Math.Sin(2d * Math.PI * frequency * time)
+            + 0.45d * Math.Sin(2d * Math.PI * frequency * 2d * time)
+            + 0.18d * Math.Sin(2d * Math.PI * frequency * 3d * time);
+
+        return Math.Tanh(shimmer * 0.9) * envelope;
+    }
+
+    private static double BassNote(double frequency, double time)
+    {
+        if (time < 0)
+        {
+            return 0;
+        }
+
+        var envelope = Math.Exp(-time * 3.5) * Math.Min(1, time / 0.018);
+        return Math.Sin(2d * Math.PI * frequency * time) * envelope;
+    }
+
+    private static double DrumKit(double time, int barBeat, int beatsPerBar)
+    {
+        var kick = Kick(time) * (barBeat == 0 ? 1.2 : 0.55);
+        var snare = (beatsPerBar == 3 ? barBeat == 2 : barBeat == 1 || barBeat == 3) ? Snare(time) : 0d;
+        var hat = HiHat(time) * 0.45;
+        return kick + snare + hat;
+    }
+
+    private static double Kick(double time)
+    {
+        if (time < 0 || time > 0.16)
+        {
+            return 0;
+        }
+
+        var frequency = 90d - 42d * (time / 0.16);
+        return Math.Sin(2d * Math.PI * frequency * time) * Math.Exp(-time * 23d);
+    }
+
+    private static double Snare(double time)
+    {
+        if (time < 0 || time > 0.12)
+        {
+            return 0;
+        }
+
+        var noise = Math.Sin((time * 44100d + 17d) * 12.9898d) * 43758.5453d;
+        noise -= Math.Floor(noise);
+        return (noise * 2d - 1d) * Math.Exp(-time * 28d);
+    }
+
+    private static double HiHat(double time)
+    {
+        if (time < 0 || time > 0.055)
+        {
+            return 0;
+        }
+
+        var noise = Math.Sin((time * 44100d + 91d) * 78.233d) * 12345.6789d;
+        noise -= Math.Floor(noise);
+        return (noise * 2d - 1d) * Math.Exp(-time * 70d);
+    }
+
+    private static double ChordWash(IReadOnlyList<double> frequencies, double time, double totalDuration, double releaseStart)
+    {
+        var envelope = Envelope(time, totalDuration, releaseStart);
+        var value = 0d;
+
+        foreach (var frequency in frequencies)
+        {
+            value += Math.Sin(2d * Math.PI * frequency * time);
+        }
+
+        return value / frequencies.Count * envelope;
     }
 
     private static double Envelope(double time, double totalDuration, double releaseStart)

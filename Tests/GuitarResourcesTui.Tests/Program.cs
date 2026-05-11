@@ -169,6 +169,20 @@ internal sealed class TriadProgressionGameTests
         var nextPhrase = game.BuildPhrase(progression, phrase[^1]);
         AssertEqual(progression.Count, nextPhrase.Count, "next phrase has one triad per chord");
         Assert(Math.Abs(nextPhrase[0].CenterFret - phrase[^1].CenterFret) <= 6, "next phrase starts near previous phrase");
+
+        AssertEqual(100, TriadProgressionGameLibrary.PresetProgressions.Count, "game has 100 preset progressions");
+        foreach (var preset in TriadProgressionGameLibrary.PresetProgressions)
+        {
+            AssertEqual(preset.Number, TriadProgressionGameLibrary.PresetProgressions[preset.Number - 1].Number, $"{preset.Name} preset number matches list position");
+            var presetProgression = game.ParseProgression(preset.ProgressionText);
+            Assert(presetProgression.Count > 0, $"{preset.Name} parses");
+            AssertEqual(presetProgression.Count, preset.ChordLengths.Count, $"{preset.Name} has one length per chord");
+            Assert(preset.Bpm >= 30 && preset.Bpm <= 240, $"{preset.Name} BPM is playable");
+            Assert(preset.TimeSignature.BeatsPerBar > 0, $"{preset.Name} has a meter");
+        }
+
+        AssertSequenceEqual([4, 2, 2, 8], game.ParseChordLengths("4 2 2 8", 4, 4), "custom chord lengths parse");
+        AssertSequenceEqual([3, 3, 3, 3], game.ParseChordLengths("", 4, 3), "blank chord lengths use default");
     }
 
     private static void Assert(bool condition, string message)
