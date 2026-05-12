@@ -16,6 +16,20 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
     private const string Pentatonic = "\e[1;38;5;213m";
     private const string BlueNote = "\e[1;38;5;51m";
 
+    private static readonly IReadOnlyList<string> SimpleTriadProgressions =
+    [
+        "C G Am F",
+        "G D Em C",
+        "D A Bm G",
+        "A E F#m D",
+        "E B C#m A",
+        "Am F C G",
+        "Em C G D",
+        "C Am F G",
+        "G C D G",
+        "D G A D"
+    ];
+
     private readonly FretboardRenderer _renderer = new();
     private readonly TriadProgressionGameLibrary _triadGame = new(triads);
 
@@ -25,11 +39,43 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         {
             Console.Clear();
             WriteHeader("Guitar Resources");
-            Console.WriteLine("1. Triad inversions");
+            Console.WriteLine("1. Triads");
             Console.WriteLine("2. Scale shapes");
             Console.WriteLine("3. Interval function map");
-            Console.WriteLine("4. Triad progression game");
             Console.WriteLine("0. Exit");
+            Console.WriteLine();
+            Console.Write("Choose an option > ");
+
+            switch (Console.ReadLine()?.Trim())
+            {
+                case "1":
+                    ShowTriadsMenu();
+                    break;
+                case "2":
+                    ShowPentatonicShapes();
+                    break;
+                case "3":
+                    ShowIntervalFunctionMap();
+                    break;
+                case "0":
+                    return;
+                default:
+                    Console.WriteLine("That choice is not on the menu.");
+                    Console.ReadKey(intercept: true);
+                    break;
+            }
+        }
+    }
+
+    private void ShowTriadsMenu()
+    {
+        while (true)
+        {
+            Console.Clear();
+            WriteHeader("Triads");
+            Console.WriteLine("1. Inversions");
+            Console.WriteLine("2. Music game");
+            Console.WriteLine("B. Back");
             Console.WriteLine();
             Console.Write("Choose an option > ");
 
@@ -39,15 +85,10 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                     ShowTriadInversions();
                     break;
                 case "2":
-                    ShowPentatonicShapes();
-                    break;
-                case "3":
-                    ShowIntervalFunctionMap();
-                    break;
-                case "4":
                     ShowTriadProgressionGame();
                     break;
-                case "0":
+                case "B":
+                case "b":
                     return;
                 default:
                     Console.WriteLine("That choice is not on the menu.");
@@ -60,7 +101,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
     private void ShowTriadProgressionGame()
     {
         Console.Clear();
-        WriteHeader("Triad progression game");
+        WriteHeader("Triad music game");
         var setup = ReadTriadProgressionSetup();
         if (setup is null)
         {
@@ -194,25 +235,62 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
     private TriadProgressionSetup? ReadTriadProgressionSetup()
     {
-        Console.WriteLine("Choose one of the 100 built-in song presets, or enter your own.");
-        Console.WriteLine("C. Custom progression");
+        Console.WriteLine("1. Simple mode");
+        Console.WriteLine("C. Custom mode");
+        Console.WriteLine("S. Song select");
+        Console.WriteLine("B. Back");
+        Console.WriteLine();
+        Console.Write("Choose a mode > ");
+
+        while (true)
+        {
+            var input = Console.ReadLine()?.Trim() ?? string.Empty;
+            switch (input.ToUpperInvariant())
+            {
+                case "1":
+                    return BuildSimpleTriadProgressionSetup();
+                case "C":
+                    return ReadCustomTriadProgressionSetup();
+                case "S":
+                    return ReadSongTriadProgressionSetup();
+                case "B":
+                case "Q":
+                    return null;
+                default:
+                    Console.Write("Choose 1, C, S, or B > ");
+                    break;
+            }
+        }
+    }
+
+    private static TriadProgressionSetup BuildSimpleTriadProgressionSetup()
+    {
+        var progression = SimpleTriadProgressions[Random.Shared.Next(SimpleTriadProgressions.Count)];
+        return new TriadProgressionSetup($"Simple mode: {progression}", progression, 80, new TimeSignature(4, 4), [4, 4, 4, 4]);
+    }
+
+    private static TriadProgressionSetup ReadCustomTriadProgressionSetup()
+    {
+        Console.WriteLine();
+        Console.WriteLine("Enter chords separated by commas or spaces. Use m for minor, for example Am, C, G, D.");
+        Console.Write("Progression > ");
+        return new TriadProgressionSetup("Custom progression", Console.ReadLine()?.Trim() ?? string.Empty);
+    }
+
+    private TriadProgressionSetup? ReadSongTriadProgressionSetup()
+    {
+        Console.Clear();
+        WriteHeader("Song select");
         foreach (var preset in TriadProgressionGameLibrary.PresetProgressions)
         {
             Console.WriteLine(preset.MenuText);
         }
         Console.WriteLine();
-        Console.Write("Progression number or C > ");
+        Console.Write("Song number or B > ");
 
         while (true)
         {
             var input = Console.ReadLine()?.Trim() ?? string.Empty;
-            if (input.Equals("C", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine("Enter chords separated by commas or spaces. Use m for minor, for example Am, C, G, D.");
-                Console.Write("Progression > ");
-                return new TriadProgressionSetup("Custom progression", Console.ReadLine()?.Trim() ?? string.Empty);
-            }
-
             if (input.Equals("B", StringComparison.OrdinalIgnoreCase) || input.Equals("Q", StringComparison.OrdinalIgnoreCase))
             {
                 return null;
@@ -223,12 +301,11 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                 var preset = _triadGame.GetPresetProgression(presetNumber);
                 if (preset is not null)
                 {
-                    Console.WriteLine($"Selected {preset.MenuText}");
                     return new TriadProgressionSetup(preset.Name, preset.ProgressionText, preset.Bpm, preset.TimeSignature, preset.ChordLengths);
                 }
             }
 
-            Console.Write("Choose 1-100, C for custom, or B to go back > ");
+            Console.Write("Choose 1-100 or B > ");
         }
     }
 
@@ -526,7 +603,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         bool paused)
     {
         Console.Clear();
-        WriteHeader("Triad progression game");
+        WriteHeader("Triad music game");
         Console.WriteLine($"Song: {title}");
         Console.WriteLine($"Progression: {string.Join(" - ", currentPhrase.Select(item => item.Chord.DisplayName))}");
         Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
