@@ -3,6 +3,7 @@ using GuitarResourcesTui.IntervalMaps;
 using GuitarResourcesTui.Pentatonics;
 using GuitarResourcesTui.Triads;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace GuitarResourcesTui.Tui;
@@ -133,17 +134,18 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         var paused = false;
         var lastSynthChordIndex = -1;
         var phraseLength = chordLengths.Sum();
-        var synthProcesses = new List<Process>();
+        var synthProcesses = new List<AudioPlayback>();
+        WarmBackingChords(currentPhrase, chordLengths, bpm, timeSignature);
+        WarmBackingChords(nextPhrase, chordLengths, bpm, timeSignature);
 
         try
         {
             while (true)
             {
+                var beatStartedAt = DateTime.UtcNow;
                 var chordIndex = ChordIndexAtBeat(chordLengths, beat);
                 var beatWithinChord = beat - StartBeatForChord(chordLengths, chordIndex);
                 var beatWithinBar = beat % timeSignature.BeatsPerBar;
-
-                RenderTriadProgressionGame(setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
 
                 if (!paused && backingEnabled && chordIndex != lastSynthChordIndex)
                 {
@@ -156,13 +158,15 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                     lastSynthChordIndex = chordIndex;
                 }
 
+                RenderTriadProgressionGame(setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+
                 if (!paused && clickEnabled)
                 {
                     Click(beatWithinBar == 0);
                 }
 
                 var interval = TimeSpan.FromMinutes(1d / bpm);
-                var deadline = DateTime.UtcNow + interval;
+                var deadline = beatStartedAt + interval;
 
                 while (DateTime.UtcNow < deadline)
                 {
@@ -209,7 +213,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                         }
                     }
 
-                    Thread.Sleep(25);
+                    Thread.Sleep(5);
                 }
 
                 if (!paused)
@@ -222,6 +226,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                 {
                     currentPhrase = nextPhrase;
                     nextPhrase = _triadGame.BuildPhrase(progression, currentPhrase[^1]);
+                    WarmBackingChords(nextPhrase, chordLengths, bpm, timeSignature);
                     beat = 0;
                     lastSynthChordIndex = -1;
                 }
@@ -711,35 +716,57 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         });
     }
 
-    private static Process? PlayBackingChord(ChordSymbol chord, int beatsPerChord, int bpm, TimeSignature timeSignature)
+    private static AudioPlayback? PlayBackingChord(ChordSymbol chord, int beatsPerChord, int bpm, TimeSignature timeSignature)
     {
-        if (!OperatingSystem.IsMacOS())
+        var path = EnsureBackingChordFile(chord, beatsPerChord, bpm, timeSignature);
+
+        try
+        {
+            if (OperatingSystem.IsMacOS())
+            {
+                var process = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "afplay",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    ArgumentList = { path }
+                });
+
+                return process is null ? null : new MacAudioPlayback(process);
+            }
+
+            if (OperatingSystem.IsWindows())
+            {
+                return WindowsAudioPlayback.Play(path);
+            }
+
+            return null;
+        }
+        catch
         {
             return null;
         }
+    }
 
+    private static void WarmBackingChords(IReadOnlyList<TriadPracticeItem> phrase, IReadOnlyList<int> chordLengths, int bpm, TimeSignature timeSignature)
+    {
+        for (var index = 0; index < phrase.Count; index++)
+        {
+            EnsureBackingChordFile(phrase[index].Chord, chordLengths[index], bpm, timeSignature);
+        }
+    }
+
+    private static string EnsureBackingChordFile(ChordSymbol chord, int beatsPerChord, int bpm, TimeSignature timeSignature)
+    {
         var durationSeconds = beatsPerChord * 60d / bpm;
-        var overlapSeconds = Math.Clamp(durationSeconds * 0.22, 0.18, 0.45);
+        var overlapSeconds = Math.Clamp(durationSeconds * 0.38, 0.32, 0.8);
         var path = BackingChordFilePath(chord, durationSeconds, overlapSeconds, bpm, timeSignature);
         if (!File.Exists(path))
         {
             WriteBackingChordWav(path, chord, beatsPerChord, bpm, timeSignature, durationSeconds, overlapSeconds);
         }
 
-        try
-        {
-            return Process.Start(new ProcessStartInfo
-            {
-                FileName = "afplay",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                ArgumentList = { path }
-            });
-        }
-        catch
-        {
-            return null;
-        }
+        return path;
     }
 
     private static string BackingChordFilePath(ChordSymbol chord, double durationSeconds, double overlapSeconds, int bpm, TimeSignature timeSignature)
@@ -749,7 +776,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
         var durationKey = Math.Round(durationSeconds, 3).ToString("0.000").Replace('.', '-');
         var overlapKey = Math.Round(overlapSeconds, 3).ToString("0.000").Replace('.', '-');
-        return Path.Combine(directory, $"{chord.Root.Replace('#', 's')}-{chord.Quality}-{bpm}-{timeSignature.DisplayName.Replace('/', '-')}-{durationKey}-{overlapKey}-v4.wav");
+        return Path.Combine(directory, $"{chord.Root.Replace('#', 's')}-{chord.Quality}-{bpm}-{timeSignature.DisplayName.Replace('/', '-')}-{durationKey}-{overlapKey}-v5.wav");
     }
 
     private static void WriteBackingChordWav(
@@ -815,7 +842,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                 }
             }
 
-            value += ChordWash(guitarFrequencies, time, totalDurationSeconds, durationSeconds) * 0.08;
+            value += ChordWash(guitarFrequencies, time, totalDurationSeconds, durationSeconds) * 0.18;
             value = Math.Tanh(value) * 0.75d;
             writer.Write((short)(value * short.MaxValue));
         }
@@ -861,7 +888,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             return 0;
         }
 
-        var envelope = Math.Exp(-time * 5.2) * Math.Min(1, time / 0.01);
+        var envelope = Math.Exp(-time * 2.6) * Math.Min(1, time / 0.008);
         var shimmer = Math.Sin(2d * Math.PI * frequency * time)
             + 0.45d * Math.Sin(2d * Math.PI * frequency * 2d * time)
             + 0.18d * Math.Sin(2d * Math.PI * frequency * 3d * time);
@@ -876,7 +903,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             return 0;
         }
 
-        var envelope = Math.Exp(-time * 3.5) * Math.Min(1, time / 0.018);
+        var envelope = Math.Exp(-time * 2.4) * Math.Min(1, time / 0.014);
         return Math.Sin(2d * Math.PI * frequency * time) * envelope;
     }
 
@@ -956,38 +983,254 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
     private static double MidiToFrequency(int midiNote) => 440d * Math.Pow(2d, (midiNote - 69) / 12d);
 
-    private static void StopProcess(Process? process)
+    private abstract class AudioPlayback : IDisposable
     {
-        try
-        {
-            if (process is { HasExited: false })
-            {
-                process.Kill();
-            }
-        }
-        catch
-        {
-            // Best effort: a finished audio process is harmless.
-        }
+        public abstract bool HasFinished { get; }
+
+        public abstract void Stop();
+
+        public abstract void Dispose();
     }
 
-    private static void StopProcesses(List<Process> processes)
+    private sealed class MacAudioPlayback(Process process) : AudioPlayback
+    {
+        public override bool HasFinished
+        {
+            get
+            {
+                try
+                {
+                    return process.HasExited;
+                }
+                catch
+                {
+                    return true;
+                }
+            }
+        }
+
+        public override void Stop()
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill();
+                }
+            }
+            catch
+            {
+                // Best effort: a finished audio process is harmless.
+            }
+        }
+
+        public override void Dispose() => process.Dispose();
+    }
+
+    private sealed class WindowsAudioPlayback : AudioPlayback
+    {
+        private const uint WaveMapper = uint.MaxValue;
+        private const uint WhdrDone = 0x00000001;
+        private readonly byte[] _audioData;
+        private readonly GCHandle _audioHandle;
+        private readonly IntPtr _headerPointer;
+        private IntPtr _waveOut;
+        private bool _closed;
+
+        private WindowsAudioPlayback(IntPtr waveOut, byte[] audioData, GCHandle audioHandle, IntPtr headerPointer)
+        {
+            _waveOut = waveOut;
+            _audioData = audioData;
+            _audioHandle = audioHandle;
+            _headerPointer = headerPointer;
+        }
+
+        public static WindowsAudioPlayback? Play(string path)
+        {
+            const int wavHeaderBytes = 44;
+            var fileBytes = File.ReadAllBytes(path);
+            if (fileBytes.Length <= wavHeaderBytes)
+            {
+                return null;
+            }
+
+            var audioData = fileBytes[wavHeaderBytes..];
+            var audioHandle = GCHandle.Alloc(audioData, GCHandleType.Pinned);
+            var headerPointer = IntPtr.Zero;
+            var waveOut = IntPtr.Zero;
+            var started = false;
+
+            try
+            {
+                var format = new WaveFormat
+                {
+                    FormatTag = 1,
+                    Channels = 1,
+                    SamplesPerSec = 44100,
+                    AvgBytesPerSec = 44100 * 2,
+                    BlockAlign = 2,
+                    BitsPerSample = 16,
+                    Size = 0
+                };
+
+                if (waveOutOpen(out waveOut, WaveMapper, ref format, IntPtr.Zero, IntPtr.Zero, 0) != 0)
+                {
+                    return null;
+                }
+
+                var header = new WaveHeader
+                {
+                    Data = audioHandle.AddrOfPinnedObject(),
+                    BufferLength = (uint)audioData.Length
+                };
+
+                var headerSize = Marshal.SizeOf<WaveHeader>();
+                headerPointer = Marshal.AllocHGlobal(headerSize);
+                Marshal.StructureToPtr(header, headerPointer, false);
+
+                if (waveOutPrepareHeader(waveOut, headerPointer, (uint)headerSize) != 0)
+                {
+                    return null;
+                }
+
+                if (waveOutWrite(waveOut, headerPointer, (uint)headerSize) != 0)
+                {
+                    return null;
+                }
+
+                started = true;
+                return new WindowsAudioPlayback(waveOut, audioData, audioHandle, headerPointer);
+            }
+            catch
+            {
+                return null;
+            }
+            finally
+            {
+                if (!started)
+                {
+                    if (headerPointer != IntPtr.Zero)
+                    {
+                        if (waveOut != IntPtr.Zero)
+                        {
+                            waveOutUnprepareHeader(waveOut, headerPointer, (uint)Marshal.SizeOf<WaveHeader>());
+                        }
+
+                        Marshal.FreeHGlobal(headerPointer);
+                    }
+
+                    if (waveOut != IntPtr.Zero)
+                    {
+                        waveOutClose(waveOut);
+                    }
+
+                    if (audioHandle.IsAllocated)
+                    {
+                        audioHandle.Free();
+                    }
+                }
+            }
+        }
+
+        public override bool HasFinished
+        {
+            get
+            {
+                if (_closed)
+                {
+                    return true;
+                }
+
+                var header = Marshal.PtrToStructure<WaveHeader>(_headerPointer);
+                return (header.Flags & WhdrDone) == WhdrDone;
+            }
+        }
+
+        public override void Stop() => Dispose();
+
+        public override void Dispose()
+        {
+            if (_closed)
+            {
+                return;
+            }
+
+            if (_waveOut != IntPtr.Zero)
+            {
+                waveOutReset(_waveOut);
+                waveOutUnprepareHeader(_waveOut, _headerPointer, (uint)Marshal.SizeOf<WaveHeader>());
+                waveOutClose(_waveOut);
+                _waveOut = IntPtr.Zero;
+            }
+
+            Marshal.FreeHGlobal(_headerPointer);
+            _audioHandle.Free();
+            GC.KeepAlive(_audioData);
+            _closed = true;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WaveFormat
+        {
+            public ushort FormatTag;
+            public ushort Channels;
+            public uint SamplesPerSec;
+            public uint AvgBytesPerSec;
+            public ushort BlockAlign;
+            public ushort BitsPerSample;
+            public ushort Size;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WaveHeader
+        {
+            public IntPtr Data;
+            public uint BufferLength;
+            public uint BytesRecorded;
+            public IntPtr User;
+            public uint Flags;
+            public uint Loops;
+            public IntPtr Next;
+            public IntPtr Reserved;
+        }
+
+        [DllImport("winmm.dll", SetLastError = true)]
+        private static extern int waveOutOpen(out IntPtr waveOut, uint deviceId, ref WaveFormat format, IntPtr callback, IntPtr instance, uint flags);
+
+        [DllImport("winmm.dll", SetLastError = true)]
+        private static extern int waveOutPrepareHeader(IntPtr waveOut, IntPtr waveHeader, uint waveHeaderSize);
+
+        [DllImport("winmm.dll", SetLastError = true)]
+        private static extern int waveOutWrite(IntPtr waveOut, IntPtr waveHeader, uint waveHeaderSize);
+
+        [DllImport("winmm.dll", SetLastError = true)]
+        private static extern int waveOutReset(IntPtr waveOut);
+
+        [DllImport("winmm.dll", SetLastError = true)]
+        private static extern int waveOutUnprepareHeader(IntPtr waveOut, IntPtr waveHeader, uint waveHeaderSize);
+
+        [DllImport("winmm.dll", SetLastError = true)]
+        private static extern int waveOutClose(IntPtr waveOut);
+    }
+
+    private static void StopProcesses(List<AudioPlayback> processes)
     {
         foreach (var process in processes)
         {
-            StopProcess(process);
+            process.Stop();
+            process.Dispose();
         }
 
         processes.Clear();
     }
 
-    private static void CleanupFinishedProcesses(List<Process> processes)
+    private static void CleanupFinishedProcesses(List<AudioPlayback> processes)
     {
         processes.RemoveAll(process =>
         {
             try
             {
-                if (!process.HasExited)
+                if (!process.HasFinished)
                 {
                     return false;
                 }
