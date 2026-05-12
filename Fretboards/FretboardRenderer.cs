@@ -10,6 +10,7 @@ public sealed class FretboardRenderer
     private const string Dim = "\e[2m";
     private const string FretNumber = "\e[38;5;244m";
     private const string Nut = "\e[38;5;230m";
+    private const string NutColumn = "\e[38;5;230;48;5;238m";
     private const string StringName = "\e[38;5;117m";
     private const string Root = "\e[1;38;5;46m";
     private const string Third = "\e[1;38;5;220m";
@@ -52,7 +53,9 @@ public sealed class FretboardRenderer
     public IReadOnlyList<string> RenderMany(
         IReadOnlyList<(string Title, FretboardDiagram Diagram)> diagrams,
         int? maxWidth = null,
-        IReadOnlySet<int>? highlightedIndexes = null)
+        IReadOnlySet<int>? highlightedIndexes = null,
+        int? maxColumns = null,
+        int? cellWidth = null)
     {
         if (diagrams.Count == 0)
         {
@@ -60,11 +63,9 @@ public sealed class FretboardRenderer
         }
 
         var rendered = diagrams
-            .Select((diagram, index) => RenderTitledDiagram(diagram, highlightedIndexes?.Contains(index) == true))
+            .Select((diagram, index) => RenderTitledDiagram(diagram, highlightedIndexes?.Contains(index) == true, cellWidth))
             .ToArray();
-        var rows = maxWidth is null
-            ? [rendered]
-            : WrapRenderedDiagrams(rendered, maxWidth.Value);
+        var rows = WrapRenderedDiagrams(rendered, maxWidth, maxColumns);
 
         var output = new List<string>();
 
@@ -81,10 +82,16 @@ public sealed class FretboardRenderer
         return output;
     }
 
-    private string[] RenderTitledDiagram((string Title, FretboardDiagram Diagram) item, bool highlighted)
+    public int MeasureTitledDiagramWidth((string Title, FretboardDiagram Diagram) item)
+    {
+        var body = Render(item.Diagram);
+        return Math.Max(VisibleLength(item.Title), body.Max(VisibleLength));
+    }
+
+    private string[] RenderTitledDiagram((string Title, FretboardDiagram Diagram) item, bool highlighted, int? minimumWidth)
     {
         var body = Render(item.Diagram, highlighted);
-        var width = Math.Max(VisibleLength(item.Title), body.Max(VisibleLength));
+        var width = Math.Max(minimumWidth ?? 0, Math.Max(VisibleLength(item.Title), body.Max(VisibleLength)));
         var title = highlighted
             ? PadRightVisible(HighlightTitleChord(item.Title), width)
             : PadRightVisible(item.Title, width);
@@ -113,18 +120,19 @@ public sealed class FretboardRenderer
         return title[..chordStart] + Color(title[chordStart..chordEnd], Third) + title[chordEnd..];
     }
 
-    private static IReadOnlyList<IReadOnlyList<string[]>> WrapRenderedDiagrams(IReadOnlyList<string[]> rendered, int maxWidth)
+    private static IReadOnlyList<IReadOnlyList<string[]>> WrapRenderedDiagrams(IReadOnlyList<string[]> rendered, int? maxWidth, int? maxColumns)
     {
         var rows = new List<IReadOnlyList<string[]>>();
         var current = new List<string[]>();
         var currentWidth = 0;
+        var columnLimit = maxColumns.GetValueOrDefault(int.MaxValue);
 
         foreach (var diagram in rendered)
         {
             var width = VisibleLength(diagram[0]);
             var nextWidth = current.Count == 0 ? width : currentWidth + DiagramGap + width;
 
-            if (current.Count > 0 && nextWidth > maxWidth)
+            if (current.Count > 0 && (current.Count >= columnLimit || (maxWidth is not null && nextWidth > maxWidth.Value)))
             {
                 rows.Add(current.ToArray());
                 current.Clear();
@@ -186,14 +194,14 @@ public sealed class FretboardRenderer
                 var label = position.IsMuted ? "X" : position.Label;
                 var displayLabel = DisplayLabel(label);
                 var paddedLabel = displayLabel.Length > 3 ? displayLabel[..3] : displayLabel.PadLeft(3).PadRight(4);
-                builder.Append(Color(paddedLabel, ColorFor(label, highlighted)));
+                builder.Append(Color(paddedLabel, ColorFor(label, highlighted, fret == 0)));
             }
             else
             {
-                builder.Append(Color("----", highlighted ? HighlightEmpty : Dim));
+                builder.Append(Color("----", fret == 0 ? NutColumn : highlighted ? HighlightEmpty : Dim));
             }
 
-            builder.Append(Color("|", Dim));
+            builder.Append(Color("|", fret == 0 ? NutColumn : Dim));
         }
 
         return builder.ToString();
@@ -212,8 +220,21 @@ public sealed class FretboardRenderer
         _ => label
     };
 
-    private static string ColorFor(string label, bool highlighted = false)
+    private static string ColorFor(string label, bool highlighted = false, bool openFret = false)
     {
+        if (openFret)
+        {
+            return label switch
+            {
+                "R" => "\e[1;38;5;46;48;5;238m",
+                "3" => "\e[1;38;5;220;48;5;238m",
+                "b3" => "\e[1;38;5;220;48;5;238m",
+                "5" => "\e[1;38;5;39;48;5;238m",
+                "X" => "\e[1;38;5;196;48;5;238m",
+                _ => "\e[1;38;5;231;48;5;238m"
+            };
+        }
+
         if (highlighted)
         {
             return label switch

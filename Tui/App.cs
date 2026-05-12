@@ -18,23 +18,43 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
     private const string Pentatonic = "\e[1;38;5;213m";
     private const string BlueNote = "\e[1;38;5;51m";
 
-    private static readonly IReadOnlyList<string> SimpleTriadProgressions =
-    [
-        "C G Am F",
-        "G D Em C",
-        "D A Bm G",
-        "A E F#m D",
-        "E B C#m A",
-        "Am F C G",
-        "Em C G D",
-        "C Am F G",
-        "G C D G",
-        "D G A D"
-    ];
-
     private readonly FretboardRenderer _renderer = new();
     private readonly TriadProgressionGameLibrary _triadGame = new(triads);
     private readonly TriadProgressionGameLibrary _spreadTriadGame = new(triads, voicingKind: TriadVoicingKind.Spread);
+
+    private static readonly IReadOnlyList<TunerNote> StandardTuning =
+    [
+        new("6", "Low E", "E2", 40),
+        new("5", "A", "A2", 45),
+        new("4", "D", "D3", 50),
+        new("3", "G", "G3", 55),
+        new("2", "B", "B3", 59),
+        new("1", "High E", "E4", 64)
+    ];
+
+    private static readonly IReadOnlyDictionary<string, int[]> CowboyChordFrets = new Dictionary<string, int[]>
+    {
+        ["A"] = [0, 2, 2, 2, 0, -1],
+        ["Am"] = [0, 1, 2, 2, 0, -1],
+        ["A7"] = [0, 2, 0, 2, 0, -1],
+        ["B7"] = [2, 0, 2, 1, 2, -1],
+        ["C"] = [0, 1, 0, 2, 3, -1],
+        ["C7"] = [0, 1, 3, 2, 3, -1],
+        ["D"] = [2, 3, 2, 0, -1, -1],
+        ["Dm"] = [1, 3, 2, 0, -1, -1],
+        ["D7"] = [2, 1, 2, 0, -1, -1],
+        ["E"] = [0, 0, 1, 2, 2, 0],
+        ["Em"] = [0, 0, 0, 2, 2, 0],
+        ["E7"] = [0, 0, 1, 0, 2, 0],
+        ["F"] = [1, 1, 2, 3, -1, -1],
+        ["G"] = [3, 0, 0, 0, 2, 3],
+        ["G7"] = [1, 0, 0, 0, 2, 3]
+    };
+
+    private static readonly IReadOnlyList<string> CowboyChordOrder =
+    [
+        "A", "Am", "A7", "B7", "C", "C7", "D", "Dm", "D7", "E", "Em", "E7", "F", "G", "G7"
+    ];
 
     public void Run()
     {
@@ -42,9 +62,11 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         {
             Console.Clear();
             WriteHeader("Guitar Resources");
-            Console.WriteLine("1. Triads");
-            Console.WriteLine("2. Scales");
-            Console.WriteLine("3. Intervals");
+            Console.WriteLine("1. Tuner");
+            Console.WriteLine("2. Cowboy chords");
+            Console.WriteLine("3. Triads");
+            Console.WriteLine("4. Scales");
+            Console.WriteLine("5. Intervals");
             Console.WriteLine("0. Exit");
             Console.WriteLine();
             Console.Write("Choose an option > ");
@@ -52,12 +74,18 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             switch (Console.ReadLine()?.Trim())
             {
                 case "1":
-                    ShowTriadsMenu();
+                    ShowTuner();
                     break;
                 case "2":
-                    ShowScalesMenu();
+                    ShowCowboyChordsMenu();
                     break;
                 case "3":
+                    ShowTriadsMenu();
+                    break;
+                case "4":
+                    ShowScalesMenu();
+                    break;
+                case "5":
                     ShowIntervalsMenu();
                     break;
                 case "0":
@@ -105,6 +133,293 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         }
     }
 
+    private void ShowTuner()
+    {
+        AudioPlayback? playback = null;
+
+        try
+        {
+            while (true)
+            {
+                Console.Clear();
+                WriteHeader("Guitar tuner");
+                Console.WriteLine("Choose a string to play a reference note.");
+                Console.WriteLine();
+                foreach (var note in StandardTuning)
+                {
+                    Console.WriteLine($"{note.MenuKey}. {note.Name} string ({note.DisplayName})");
+                }
+                Console.WriteLine("N. Custom note");
+                Console.WriteLine("S. Stop");
+                Console.WriteLine("B. Back");
+                Console.WriteLine();
+                Console.Write("Choose a note > ");
+
+                var input = Console.ReadLine()?.Trim() ?? string.Empty;
+                if (input.Equals("B", StringComparison.OrdinalIgnoreCase) || input.Equals("Q", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                if (input.Equals("S", StringComparison.OrdinalIgnoreCase))
+                {
+                    playback?.Stop();
+                    playback?.Dispose();
+                    playback = null;
+                    continue;
+                }
+
+                TunerNote? noteToPlay = null;
+                if (input.Equals("N", StringComparison.OrdinalIgnoreCase))
+                {
+                    noteToPlay = ReadCustomTunerNote();
+                    if (noteToPlay is null)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    noteToPlay = StandardTuning.FirstOrDefault(note => note.MenuKey == input);
+                }
+
+                if (noteToPlay is null)
+                {
+                    Console.WriteLine("Choose 1-6, N, S, or B.");
+                    Console.ReadKey(intercept: true);
+                    continue;
+                }
+
+                playback?.Stop();
+                playback?.Dispose();
+                playback = PlayTunerNote(noteToPlay);
+
+                Console.WriteLine();
+                Console.WriteLine($"Playing {noteToPlay.DisplayName} ({TunerFrequency(noteToPlay.MidiNote):0.00} Hz). Press any key to choose another note.");
+                Console.ReadKey(intercept: true);
+            }
+        }
+        finally
+        {
+            playback?.Stop();
+            playback?.Dispose();
+        }
+    }
+
+    private static TunerNote? ReadCustomTunerNote()
+    {
+        while (true)
+        {
+            Console.Write("Note, for example E2, A2, C#3, Bb3, or B > ");
+            var input = Console.ReadLine()?.Trim() ?? string.Empty;
+            if (input.Equals("B", StringComparison.OrdinalIgnoreCase) || input.Equals("Q", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (TryParseTunerNote(input, out var note))
+            {
+                return note;
+            }
+
+            Console.WriteLine("Use a note name plus octave from 0-8, for example E2, C#3, or Bb3.");
+        }
+    }
+
+    private void ShowCowboyChordsMenu()
+    {
+        while (true)
+        {
+            Console.Clear();
+            WriteHeader("Cowboy chords");
+            Console.WriteLine("1. Chord reference");
+            Console.WriteLine("2. Song mode");
+            Console.WriteLine("B. Back");
+            Console.WriteLine();
+            Console.Write("Choose an option > ");
+
+            switch (Console.ReadLine()?.Trim())
+            {
+                case "1":
+                    ShowCowboyChordReference();
+                    break;
+                case "2":
+                    ShowCowboyChordSongMode();
+                    break;
+                case "B":
+                case "b":
+                    return;
+                default:
+                    Console.WriteLine("That choice is not on the menu.");
+                    Console.ReadKey(intercept: true);
+                    break;
+            }
+        }
+    }
+
+    private void ShowCowboyChordReference()
+    {
+        Console.Clear();
+        WriteHeader("Cowboy chord reference");
+        Console.WriteLine($"Labels: {Root}R{Reset} = root, {Third}3/b3{Reset} = third, {Fifth}5{Reset} = fifth, X = muted string");
+        Console.WriteLine("B/Q = back");
+        Console.WriteLine();
+
+        var diagrams = CowboyChordOrder
+            .Select(chordName => (chordName, BuildCowboyChordDiagram(chordName)))
+            .ToArray();
+        var cellWidth = diagrams.Max(_renderer.MeasureTitledDiagramWidth);
+
+        foreach (var line in _renderer.RenderMany(diagrams, GetUsableConsoleWidth(), maxColumns: 4, cellWidth: cellWidth))
+        {
+            Console.WriteLine(line);
+        }
+
+        Console.ReadKey(intercept: true);
+    }
+
+    private void ShowCowboyChordSongMode()
+    {
+        var setup = ReadCowboyChordSongSetup();
+        if (setup is null)
+        {
+            return;
+        }
+
+        ShowChordDiagramSongGame("Cowboy chord song mode", setup, BuildCowboySongDiagram);
+    }
+
+    private void ShowChordDiagramSongGame(
+        string gameTitle,
+        TriadProgressionSetup setup,
+        Func<ChordSymbol, FretboardDiagram> buildDiagram)
+    {
+        IReadOnlyList<ChordSymbol> progression;
+        try
+        {
+            progression = _triadGame.ParseProgression(setup.ProgressionText);
+        }
+        catch (ArgumentException exception)
+        {
+            Console.WriteLine(exception.Message);
+            Console.ReadKey(intercept: true);
+            return;
+        }
+
+        var bpm = setup.Bpm ?? ReadInt("BPM", defaultValue: 80, min: 30, max: 240);
+        var timeSignature = setup.TimeSignature ?? ReadTimeSignature();
+        var chordLengths = setup.ChordLengths ?? ReadChordLengths(progression, timeSignature);
+        var beat = 0;
+        var paused = false;
+        var clickEnabled = true;
+        var backingEnabled = true;
+        var lastSynthChordIndex = -1;
+        var lastRenderedChordIndex = -1;
+        var phraseLength = chordLengths.Sum();
+        var synthProcesses = new List<AudioPlayback>();
+        WarmBackingChords(progression, chordLengths, bpm, timeSignature);
+
+        try
+        {
+            while (true)
+            {
+                var beatStartedAt = DateTime.UtcNow;
+                var chordIndex = ChordIndexAtBeat(chordLengths, beat);
+                var beatWithinChord = beat - StartBeatForChord(chordLengths, chordIndex);
+                var beatWithinBar = beat % timeSignature.BeatsPerBar;
+
+                if (!paused && backingEnabled && chordIndex != lastSynthChordIndex)
+                {
+                    CleanupFinishedProcesses(synthProcesses);
+                    var synthProcess = PlayBackingChord(progression[chordIndex], chordLengths[chordIndex], bpm, timeSignature);
+                    if (synthProcess is not null)
+                    {
+                        synthProcesses.Add(synthProcess);
+                    }
+
+                    lastSynthChordIndex = chordIndex;
+                }
+
+                if (chordIndex != lastRenderedChordIndex)
+                {
+                    RenderChordDiagramSongGame(gameTitle, setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, buildDiagram);
+                    lastRenderedChordIndex = chordIndex;
+                }
+
+                if (!paused && clickEnabled)
+                {
+                    Click(beatWithinBar == 0);
+                }
+
+                var deadline = beatStartedAt + TimeSpan.FromMinutes(1d / bpm);
+                while (DateTime.UtcNow < deadline)
+                {
+                    if (Console.KeyAvailable)
+                    {
+                        switch (Console.ReadKey(intercept: true).Key)
+                        {
+                            case ConsoleKey.Q:
+                            case ConsoleKey.B:
+                            case ConsoleKey.Escape:
+                                return;
+                            case ConsoleKey.Spacebar:
+                                paused = !paused;
+                                if (paused)
+                                {
+                                    StopProcesses(synthProcesses);
+                                }
+                                else
+                                {
+                                    lastSynthChordIndex = -1;
+                                }
+                                RenderChordDiagramSongGame(gameTitle, setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, buildDiagram);
+                                break;
+                            case ConsoleKey.M:
+                                clickEnabled = !clickEnabled;
+                                RenderChordDiagramSongGame(gameTitle, setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, buildDiagram);
+                                break;
+                            case ConsoleKey.S:
+                                backingEnabled = !backingEnabled;
+                                if (!backingEnabled)
+                                {
+                                    StopProcesses(synthProcesses);
+                                }
+                                else
+                                {
+                                    lastSynthChordIndex = -1;
+                                }
+                                RenderChordDiagramSongGame(gameTitle, setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, buildDiagram);
+                                break;
+                            case ConsoleKey.N:
+                            case ConsoleKey.RightArrow:
+                                beat = StartBeatForChord(chordLengths, chordIndex + 1);
+                                goto BeatAdvancedManually;
+                        }
+                    }
+
+                    Thread.Sleep(5);
+                }
+
+                if (!paused)
+                {
+                    beat++;
+                }
+
+            BeatAdvancedManually:
+                if (beat >= phraseLength)
+                {
+                    beat = 0;
+                    lastSynthChordIndex = -1;
+                    lastRenderedChordIndex = -1;
+                }
+            }
+        }
+        finally
+        {
+            StopProcesses(synthProcesses);
+        }
+    }
+
     private void ShowTriadProgressionGame(string gameTitle, TriadProgressionGameLibrary game)
     {
         Console.Clear();
@@ -142,6 +457,8 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         var lastSynthChordIndex = -1;
         var lastRenderedChordIndex = -1;
         var phraseLength = chordLengths.Sum();
+        var phraseNumber = 0;
+        (int Phrase, int ChordIndex)? lastAnnouncedChord = null;
         var synthProcesses = new List<AudioPlayback>();
         using var voiceAnnouncer = new VoiceAnnouncer();
         WarmBackingChords(currentPhrase, chordLengths, bpm, timeSignature);
@@ -158,6 +475,12 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                 var chordChanged = chordIndex != lastRenderedChordIndex;
                 var currentChord = currentPhrase[chordIndex].Chord;
 
+                if (!paused && voiceEnabled && chordChanged && lastAnnouncedChord != (phraseNumber, chordIndex))
+                {
+                    voiceAnnouncer.SayChord(currentChord);
+                    lastAnnouncedChord = (phraseNumber, chordIndex);
+                }
+
                 if (!paused && backingEnabled && chordIndex != lastSynthChordIndex)
                 {
                     CleanupFinishedProcesses(synthProcesses);
@@ -167,11 +490,6 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                         synthProcesses.Add(synthProcess);
                     }
                     lastSynthChordIndex = chordIndex;
-                }
-
-                if (!paused && voiceEnabled && chordChanged)
-                {
-                    voiceAnnouncer.SayChord(currentChord);
                 }
 
                 if (chordChanged)
@@ -187,9 +505,31 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
                 var interval = TimeSpan.FromMinutes(1d / bpm);
                 var deadline = beatStartedAt + interval;
+                var voiceLeadTime = TimeSpan.FromMilliseconds(Math.Min(450, interval.TotalMilliseconds * 0.7));
 
                 while (DateTime.UtcNow < deadline)
                 {
+                    if (!paused && voiceEnabled && DateTime.UtcNow >= deadline - voiceLeadTime)
+                    {
+                        var nextBeat = beat + 1;
+                        var nextPhraseNumber = phraseNumber;
+                        var nextPhraseForVoice = currentPhrase;
+
+                        if (nextBeat >= phraseLength)
+                        {
+                            nextBeat = 0;
+                            nextPhraseNumber++;
+                            nextPhraseForVoice = nextPhrase;
+                        }
+
+                        var nextChordIndex = ChordIndexAtBeat(chordLengths, nextBeat);
+                        if (nextBeat == StartBeatForChord(chordLengths, nextChordIndex) && lastAnnouncedChord != (nextPhraseNumber, nextChordIndex))
+                        {
+                            voiceAnnouncer.SayChord(nextPhraseForVoice[nextChordIndex].Chord);
+                            lastAnnouncedChord = (nextPhraseNumber, nextChordIndex);
+                        }
+                    }
+
                     if (Console.KeyAvailable)
                     {
                         switch (Console.ReadKey(intercept: true).Key)
@@ -260,6 +600,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                     nextPhrase = game.BuildPhrase(progression, currentPhrase[^1]);
                     WarmBackingChords(nextPhrase, chordLengths, bpm, timeSignature);
                     beat = 0;
+                    phraseNumber++;
                     lastSynthChordIndex = -1;
                     lastRenderedChordIndex = -1;
                 }
@@ -303,8 +644,32 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
     private static TriadProgressionSetup BuildSimpleTriadProgressionSetup()
     {
-        var progression = SimpleTriadProgressions[Random.Shared.Next(SimpleTriadProgressions.Count)];
-        return new TriadProgressionSetup($"Simple mode: {progression}", progression, 80, new TimeSignature(4, 4), [4, 4, 4, 4]);
+        var keyRoot = MusicTheory.ChromaticRoots[Random.Shared.Next(MusicTheory.ChromaticRoots.Count)];
+        var minor = Random.Shared.Next(2) == 0;
+        var formulas = minor
+            ? new[] { (0, ChordQuality.Minor), (3, ChordQuality.Major), (5, ChordQuality.Minor), (7, ChordQuality.Minor), (8, ChordQuality.Major), (10, ChordQuality.Major) }
+            : new[] { (0, ChordQuality.Major), (2, ChordQuality.Minor), (4, ChordQuality.Minor), (5, ChordQuality.Major), (7, ChordQuality.Major), (9, ChordQuality.Minor) };
+        var rootPitch = MusicTheory.PitchClassFor(keyRoot);
+        var selected = new List<(int Interval, ChordQuality Quality)> { formulas[0] };
+
+        while (selected.Count < 4)
+        {
+            var candidate = formulas[Random.Shared.Next(formulas.Length)];
+            if (candidate == selected[^1])
+            {
+                continue;
+            }
+
+            selected.Add(candidate);
+        }
+
+        var chords = selected
+            .Select(chord => new ChordSymbol(MusicTheory.NameFor(rootPitch + chord.Interval), chord.Quality))
+            .ToArray();
+        var progression = string.Join(" ", chords.Select(chord => chord.DisplayName));
+        var modeName = minor ? "minor" : "major";
+
+        return new TriadProgressionSetup($"Simple random {keyRoot} {modeName}: {progression}", progression, 80, new TimeSignature(4, 4), [4, 4, 4, 4]);
     }
 
     private static TriadProgressionSetup BuildSimpleScaleProgressionSetup(string keyRoot, PentatonicScaleKind scaleKind)
@@ -402,6 +767,49 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
             Console.Write("Choose 1-100 or B > ");
         }
+    }
+
+    private TriadProgressionSetup? ReadCowboyChordSongSetup()
+    {
+        var songs = TriadProgressionGameLibrary.PresetProgressions
+            .Where(IsCowboyChordSong)
+            .ToArray();
+
+        Console.Clear();
+        WriteHeader("Cowboy chord song select");
+        foreach (var preset in songs)
+        {
+            Console.WriteLine(preset.MenuText);
+        }
+        Console.WriteLine();
+        Console.Write("Song number or B > ");
+
+        while (true)
+        {
+            var input = Console.ReadLine()?.Trim() ?? string.Empty;
+            if (input.Equals("B", StringComparison.OrdinalIgnoreCase) || input.Equals("Q", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (int.TryParse(input, out var presetNumber))
+            {
+                var preset = songs.FirstOrDefault(progression => progression.Number == presetNumber);
+                if (preset is not null)
+                {
+                    return new TriadProgressionSetup(preset.Name, preset.ProgressionText, preset.Bpm, preset.TimeSignature, preset.ChordLengths);
+                }
+            }
+
+            Console.Write("Choose a listed song number or B > ");
+        }
+    }
+
+    private static bool IsCowboyChordSong(PresetChordProgression preset)
+    {
+        return preset.ProgressionText
+            .Split([',', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .All(CowboyChordFrets.ContainsKey);
     }
 
     private IReadOnlyList<int> ReadChordLengths(IReadOnlyList<ChordSymbol> progression, TimeSignature timeSignature)
@@ -755,6 +1163,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             WriteHeader("Scales");
             Console.WriteLine("1. Shapes");
             Console.WriteLine("2. Song game");
+            Console.WriteLine("3. Song library scale suggester");
             Console.WriteLine("B. Back");
             Console.WriteLine();
             Console.Write("Choose an option > ");
@@ -766,6 +1175,9 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                     break;
                 case "2":
                     ShowScaleSongGame();
+                    break;
+                case "3":
+                    ShowScaleLibrarySongGame();
                     break;
                 case "B":
                 case "b":
@@ -925,8 +1337,14 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         var currentDiagrams = currentPhrase
             .Select((item, index) => ($"{(index == chordIndex ? "> " : "  ")}{item.Title} [{chordLengths[index]} beat{Pluralize(chordLengths[index])}]", item.Diagram))
             .ToArray();
+        var nextDiagrams = nextPhrase
+            .Select((item, index) => ($"  {item.Title} [{chordLengths[index]} beat{Pluralize(chordLengths[index])}]", item.Diagram))
+            .ToArray();
+        var gridCellWidth = currentDiagrams
+            .Concat(nextDiagrams)
+            .Max(_renderer.MeasureTitledDiagramWidth);
 
-        foreach (var line in _renderer.RenderMany(currentDiagrams, GetUsableConsoleWidth(), new HashSet<int> { chordIndex }))
+        foreach (var line in _renderer.RenderMany(currentDiagrams, GetUsableConsoleWidth(), new HashSet<int> { chordIndex }, maxColumns: 4, cellWidth: gridCellWidth))
         {
             Console.WriteLine(line);
         }
@@ -935,14 +1353,55 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         WriteCenteredHighlightedProgression(currentPhrase, chordIndex);
         Console.WriteLine();
         Console.WriteLine("Up next");
-        var nextDiagrams = nextPhrase
-            .Select((item, index) => ($"  {item.Title} [{chordLengths[index]} beat{Pluralize(chordLengths[index])}]", item.Diagram))
-            .ToArray();
 
-        foreach (var line in _renderer.RenderMany(nextDiagrams, GetUsableConsoleWidth()))
+        foreach (var line in _renderer.RenderMany(nextDiagrams, GetUsableConsoleWidth(), maxColumns: 4, cellWidth: gridCellWidth))
         {
             Console.WriteLine(line);
         }
+    }
+
+    private void RenderChordDiagramSongGame(
+        string gameTitle,
+        string title,
+        IReadOnlyList<ChordSymbol> progression,
+        IReadOnlyList<int> chordLengths,
+        int chordIndex,
+        int beatWithinChord,
+        int beatWithinBar,
+        TimeSignature timeSignature,
+        int bpm,
+        bool clickEnabled,
+        bool backingEnabled,
+        bool paused,
+        Func<ChordSymbol, FretboardDiagram> buildDiagram)
+    {
+        var currentChord = progression[chordIndex];
+        var uniqueChords = progression
+            .Distinct()
+            .ToArray();
+        var currentDiagramIndex = Array.IndexOf(uniqueChords, currentChord);
+        var diagrams = uniqueChords
+            .Select(chord => (chord.DisplayName, buildDiagram(chord)))
+            .ToArray();
+        var cellWidth = diagrams.Max(_renderer.MeasureTitledDiagramWidth);
+
+        Console.Clear();
+        WriteHeader(gameTitle);
+        Console.WriteLine($"Song: {title}");
+        Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
+        Console.WriteLine("Space = pause, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
+        Console.WriteLine();
+        Console.WriteLine($"Now: {currentChord.DisplayName}  chord beat {beatWithinChord + 1}/{chordLengths[chordIndex]}  bar beat {beatWithinBar + 1}/{timeSignature.BeatsPerBar}");
+        Console.WriteLine($"Labels: {Root}R{Reset} = root, {Third}3/b3{Reset} = third, {Fifth}5{Reset} = fifth, X = muted string");
+        Console.WriteLine();
+
+        foreach (var line in _renderer.RenderMany(diagrams, GetUsableConsoleWidth(), new HashSet<int> { currentDiagramIndex }, maxColumns: 4, cellWidth: cellWidth))
+        {
+            Console.WriteLine(line);
+        }
+
+        Console.WriteLine();
+        WriteCenteredHighlightedProgression(progression, chordIndex);
     }
 
     private static void WriteCenteredHighlightedProgression(IReadOnlyList<TriadPracticeItem> phrase, int chordIndex)
@@ -1124,6 +1583,141 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         }
     }
 
+    private void ShowScaleLibrarySongGame()
+    {
+        var setup = ReadSongTriadProgressionSetup();
+        if (setup is null)
+        {
+            return;
+        }
+
+        IReadOnlyList<ChordSymbol> progression;
+        try
+        {
+            progression = _triadGame.ParseProgression(setup.ProgressionText);
+        }
+        catch (ArgumentException exception)
+        {
+            Console.WriteLine(exception.Message);
+            Console.ReadKey(intercept: true);
+            return;
+        }
+
+        var suggestions = SuggestScalesForProgression(progression);
+        var bpm = setup.Bpm ?? ReadInt("BPM", defaultValue: 80, min: 30, max: 240);
+        var timeSignature = setup.TimeSignature ?? ReadTimeSignature();
+        var chordLengths = setup.ChordLengths ?? ReadChordLengths(progression, timeSignature);
+        var beat = 0;
+        var paused = false;
+        var clickEnabled = true;
+        var backingEnabled = true;
+        var lastSynthChordIndex = -1;
+        var lastRenderedChordIndex = -1;
+        var phraseLength = chordLengths.Sum();
+        var synthProcesses = new List<AudioPlayback>();
+        WarmBackingChords(progression, chordLengths, bpm, timeSignature);
+
+        try
+        {
+            while (true)
+            {
+                var beatStartedAt = DateTime.UtcNow;
+                var chordIndex = ChordIndexAtBeat(chordLengths, beat);
+                var beatWithinChord = beat - StartBeatForChord(chordLengths, chordIndex);
+                var beatWithinBar = beat % timeSignature.BeatsPerBar;
+
+                if (!paused && backingEnabled && chordIndex != lastSynthChordIndex)
+                {
+                    CleanupFinishedProcesses(synthProcesses);
+                    var synthProcess = PlayBackingChord(progression[chordIndex], chordLengths[chordIndex], bpm, timeSignature);
+                    if (synthProcess is not null)
+                    {
+                        synthProcesses.Add(synthProcess);
+                    }
+
+                    lastSynthChordIndex = chordIndex;
+                }
+
+                if (chordIndex != lastRenderedChordIndex)
+                {
+                    RenderScaleLibrarySongGame(setup.Title, progression, suggestions, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                    lastRenderedChordIndex = chordIndex;
+                }
+
+                if (!paused && clickEnabled)
+                {
+                    Click(beatWithinBar == 0);
+                }
+
+                var deadline = beatStartedAt + TimeSpan.FromMinutes(1d / bpm);
+                while (DateTime.UtcNow < deadline)
+                {
+                    if (Console.KeyAvailable)
+                    {
+                        switch (Console.ReadKey(intercept: true).Key)
+                        {
+                            case ConsoleKey.Q:
+                            case ConsoleKey.B:
+                            case ConsoleKey.Escape:
+                                return;
+                            case ConsoleKey.Spacebar:
+                                paused = !paused;
+                                if (paused)
+                                {
+                                    StopProcesses(synthProcesses);
+                                }
+                                else
+                                {
+                                    lastSynthChordIndex = -1;
+                                }
+                                RenderScaleLibrarySongGame(setup.Title, progression, suggestions, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                                break;
+                            case ConsoleKey.M:
+                                clickEnabled = !clickEnabled;
+                                RenderScaleLibrarySongGame(setup.Title, progression, suggestions, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                                break;
+                            case ConsoleKey.S:
+                                backingEnabled = !backingEnabled;
+                                if (!backingEnabled)
+                                {
+                                    StopProcesses(synthProcesses);
+                                }
+                                else
+                                {
+                                    lastSynthChordIndex = -1;
+                                }
+                                RenderScaleLibrarySongGame(setup.Title, progression, suggestions, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                                break;
+                            case ConsoleKey.N:
+                            case ConsoleKey.RightArrow:
+                                beat = StartBeatForChord(chordLengths, chordIndex + 1);
+                                goto BeatAdvancedManually;
+                        }
+                    }
+
+                    Thread.Sleep(5);
+                }
+
+                if (!paused)
+                {
+                    beat++;
+                }
+
+            BeatAdvancedManually:
+                if (beat >= phraseLength)
+                {
+                    beat = 0;
+                    lastSynthChordIndex = -1;
+                    lastRenderedChordIndex = -1;
+                }
+            }
+        }
+        finally
+        {
+            StopProcesses(synthProcesses);
+        }
+    }
+
     private void RenderIntervalSongGame(
         string title,
         IReadOnlyList<ChordSymbol> progression,
@@ -1200,6 +1794,52 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         Console.WriteLine();
 
         foreach (var line in _renderer.Render(diagram))
+        {
+            Console.WriteLine(line);
+        }
+
+        Console.WriteLine();
+        WriteCenteredHighlightedProgression(progression, chordIndex);
+        Console.WriteLine();
+        WriteCenteredHighlightedRomanProgression(romanNumerals, chordIndex);
+    }
+
+    private void RenderScaleLibrarySongGame(
+        string title,
+        IReadOnlyList<ChordSymbol> progression,
+        IReadOnlyList<ScaleSuggestion> suggestions,
+        IReadOnlyList<int> chordLengths,
+        int chordIndex,
+        int beatWithinChord,
+        int beatWithinBar,
+        TimeSignature timeSignature,
+        int bpm,
+        bool clickEnabled,
+        bool backingEnabled,
+        bool paused)
+    {
+        var currentChord = progression[chordIndex];
+        var primary = suggestions[0];
+        var romanNumerals = progression.Select(chord => RomanNumeral(chord, primary.KeyRoot)).ToArray();
+        var scaleDiagrams = suggestions
+            .Take(2)
+            .Select(suggestion => ($"{suggestion.KeyRoot} {PentatonicLibrary.NameFor(suggestion.ScaleKind)}", pentatonics.BuildScaleWindow(suggestion.KeyRoot, suggestion.ScaleKind, startFret: 0, length: 25, currentChord)))
+            .ToArray();
+
+        Console.Clear();
+        WriteHeader("Scale song suggester");
+        Console.WriteLine($"Song: {title}");
+        Console.WriteLine($"Best fit: {primary.KeyRoot} {PentatonicLibrary.NameFor(primary.ScaleKind)}  Current function: {Third}{romanNumerals[chordIndex]}{Reset}");
+        Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
+        Console.WriteLine("Space = pause, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
+        Console.WriteLine();
+
+        Console.WriteLine($"Now: {currentChord.DisplayName}  chord beat {beatWithinChord + 1}/{chordLengths[chordIndex]}  bar beat {beatWithinBar + 1}/{timeSignature.BeatsPerBar}");
+        Console.WriteLine($"Land on current chord tones: {Root}R{Reset}, {Third}3/b3{Reset}, {Fifth}5{Reset}");
+        Console.WriteLine($"Also try: {string.Join("  |  ", suggestions.Skip(1).Take(3).Select(FormatScaleSuggestion))}");
+        Console.WriteLine();
+
+        foreach (var line in _renderer.RenderMany(scaleDiagrams, GetUsableConsoleWidth(), maxColumns: 1))
         {
             Console.WriteLine(line);
         }
@@ -1335,6 +1975,88 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         };
     }
 
+    private static bool TryParseTunerNote(string input, out TunerNote note)
+    {
+        note = new TunerNote(string.Empty, string.Empty, string.Empty, 0);
+        var trimmed = input.Trim();
+        if (trimmed.Length < 2)
+        {
+            return false;
+        }
+
+        var octaveStart = trimmed.TakeWhile(character => !char.IsDigit(character)).Count();
+        if (octaveStart == 0 || octaveStart >= trimmed.Length)
+        {
+            return false;
+        }
+
+        var root = NormalizeRootInput(trimmed[..octaveStart]);
+        if (!MusicTheory.ChromaticRoots.Contains(root) || !int.TryParse(trimmed[octaveStart..], out var octave) || octave is < 0 or > 8)
+        {
+            return false;
+        }
+
+        var midiNote = (octave + 1) * 12 + MusicTheory.PitchClassFor(root);
+        note = new TunerNote(string.Empty, $"{root} custom", $"{root}{octave}", midiNote);
+        return true;
+    }
+
+    private static FretboardDiagram BuildCowboySongDiagram(ChordSymbol chord)
+    {
+        return BuildCowboyChordDiagram(chord.DisplayName);
+    }
+
+    private static FretboardDiagram BuildCowboyChordDiagram(string chordName)
+    {
+        var frets = CowboyChordFrets[chordName];
+        var labelsByPitchClass = CowboyChordLabels(chordName);
+        var positions = new List<FretPosition>();
+        var tuning = new[] { 4, 11, 7, 2, 9, 4 };
+        var strings = new[] { "E", "B", "G", "D", "A", "E" };
+
+        for (var stringIndex = 0; stringIndex < frets.Length; stringIndex++)
+        {
+            var fret = frets[stringIndex];
+            if (fret < 0)
+            {
+                positions.Add(new FretPosition(stringIndex, 0, "X", IsMuted: true, SourceStringIndex: stringIndex));
+                continue;
+            }
+
+            var pitch = MusicTheory.Normalize(tuning[stringIndex] + fret);
+            positions.Add(new FretPosition(
+                stringIndex,
+                fret,
+                labelsByPitchClass.GetValueOrDefault(pitch, string.Empty),
+                SourceStringIndex: stringIndex));
+        }
+
+        return new FretboardDiagram(strings, 0, 4, positions);
+    }
+
+    private static IReadOnlyDictionary<int, string> CowboyChordLabels(string chordName)
+    {
+        var hasSeventh = chordName.EndsWith('7');
+        var baseName = hasSeventh ? chordName[..^1] : chordName;
+        var quality = baseName.EndsWith('m') ? ChordQuality.Minor : ChordQuality.Major;
+        var root = quality == ChordQuality.Minor ? baseName[..^1] : baseName;
+        var rootPitch = MusicTheory.PitchClassFor(root);
+        var thirdInterval = quality == ChordQuality.Minor ? 3 : 4;
+        var labels = new Dictionary<int, string>
+        {
+            [rootPitch] = "R",
+            [MusicTheory.Normalize(rootPitch + thirdInterval)] = quality == ChordQuality.Minor ? "b3" : "3",
+            [MusicTheory.Normalize(rootPitch + 7)] = "5"
+        };
+
+        if (hasSeventh)
+        {
+            labels[MusicTheory.Normalize(rootPitch + 10)] = "b7";
+        }
+
+        return labels;
+    }
+
     private static bool IsMinorScale(PentatonicScaleKind scaleKind) => scaleKind is
         PentatonicScaleKind.MinorPentatonic or
         PentatonicScaleKind.MinorBlues or
@@ -1344,6 +2066,129 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         PentatonicScaleKind.Locrian or
         PentatonicScaleKind.HarmonicMinor or
         PentatonicScaleKind.MelodicMinor;
+
+    private static IReadOnlyList<ScaleSuggestion> SuggestScalesForProgression(IReadOnlyList<ChordSymbol> progression)
+    {
+        var scaleKindOrder = PentatonicLibrary.ScaleKinds.ToArray();
+        var keyCandidates = MusicTheory.ChromaticRoots
+            .SelectMany(root => new[]
+            {
+                ScoreKeyCandidate(progression, root, minor: false),
+                ScoreKeyCandidate(progression, root, minor: true)
+            })
+            .OrderByDescending(candidate => candidate.Score)
+            .ThenBy(candidate => candidate.ChordMismatches)
+            .ThenBy(candidate => candidate.Root == progression[0].Root ? 0 : 1)
+            .Take(3)
+            .ToArray();
+
+        var suggestions = new List<ScaleSuggestion>();
+        foreach (var candidate in keyCandidates)
+        {
+            var primaryKind = candidate.Minor ? PentatonicScaleKind.NaturalMinor : PentatonicScaleKind.MajorScale;
+            var pentatonicKind = candidate.Minor ? PentatonicScaleKind.MinorPentatonic : PentatonicScaleKind.MajorPentatonic;
+            var bluesKind = candidate.Minor ? PentatonicScaleKind.MinorBlues : PentatonicScaleKind.MajorBlues;
+
+            suggestions.Add(new ScaleSuggestion(candidate.Root, primaryKind, candidate.Score, candidate.Reason));
+            suggestions.Add(new ScaleSuggestion(candidate.Root, pentatonicKind, candidate.Score - 1, "Simpler box pattern for the same key"));
+            suggestions.Add(new ScaleSuggestion(candidate.Root, bluesKind, candidate.Score - 2, "Adds blues color over the same key"));
+
+            if (candidate.Minor)
+            {
+                suggestions.Add(new ScaleSuggestion(candidate.Root, PentatonicScaleKind.Dorian, candidate.Score - 3, "Brighter minor option when the progression wants a natural 6"));
+            }
+            else if (ProgressionContainsFlatSevenMajor(progression, candidate.Root))
+            {
+                suggestions.Add(new ScaleSuggestion(candidate.Root, PentatonicScaleKind.Mixolydian, candidate.Score - 3, "Good for major progressions with a bVII sound"));
+            }
+        }
+
+        return suggestions
+            .GroupBy(suggestion => (suggestion.KeyRoot, suggestion.ScaleKind))
+            .Select(group => group.OrderByDescending(suggestion => suggestion.Score).First())
+            .OrderByDescending(suggestion => suggestion.Score)
+            .ThenBy(suggestion => Array.IndexOf(scaleKindOrder, suggestion.ScaleKind))
+            .Take(6)
+            .ToArray();
+    }
+
+    private static KeyCandidate ScoreKeyCandidate(IReadOnlyList<ChordSymbol> progression, string root, bool minor)
+    {
+        var score = 0;
+        var mismatches = 0;
+
+        for (var index = 0; index < progression.Count; index++)
+        {
+            var chord = progression[index];
+            var interval = MusicTheory.Normalize(MusicTheory.PitchClassFor(chord.Root) - MusicTheory.PitchClassFor(root));
+            var expectedQuality = QualityForDiatonicTriad(interval, minor);
+
+            if (expectedQuality == chord.Quality)
+            {
+                score += index == 0 ? 5 : 3;
+            }
+            else if (expectedQuality is not null)
+            {
+                score += 1;
+                mismatches++;
+            }
+            else
+            {
+                score -= 2;
+                mismatches++;
+            }
+        }
+
+        if (progression[0].Root == root && progression[0].Quality == (minor ? ChordQuality.Minor : ChordQuality.Major))
+        {
+            score += 4;
+        }
+
+        var modeName = minor ? "minor" : "major";
+        var reason = mismatches == 0
+            ? $"All chords fit {root} {modeName}"
+            : $"{progression.Count - mismatches}/{progression.Count} chords fit {root} {modeName}";
+
+        return new KeyCandidate(root, minor, score, mismatches, reason);
+    }
+
+    private static ChordQuality? QualityForDiatonicTriad(int interval, bool minor)
+    {
+        return minor
+            ? interval switch
+            {
+                0 => ChordQuality.Minor,
+                3 => ChordQuality.Major,
+                5 => ChordQuality.Minor,
+                7 => ChordQuality.Minor,
+                8 => ChordQuality.Major,
+                10 => ChordQuality.Major,
+                _ => null
+            }
+            : interval switch
+            {
+                0 => ChordQuality.Major,
+                2 => ChordQuality.Minor,
+                4 => ChordQuality.Minor,
+                5 => ChordQuality.Major,
+                7 => ChordQuality.Major,
+                9 => ChordQuality.Minor,
+                _ => null
+            };
+    }
+
+    private static bool ProgressionContainsFlatSevenMajor(IReadOnlyList<ChordSymbol> progression, string keyRoot)
+    {
+        var keyPitch = MusicTheory.PitchClassFor(keyRoot);
+        return progression.Any(chord =>
+            chord.Quality == ChordQuality.Major &&
+            MusicTheory.Normalize(MusicTheory.PitchClassFor(chord.Root) - keyPitch) == 10);
+    }
+
+    private static string FormatScaleSuggestion(ScaleSuggestion suggestion)
+    {
+        return $"{suggestion.KeyRoot} {PentatonicLibrary.NameFor(suggestion.ScaleKind)}";
+    }
 
     private static IReadOnlyList<IntervalPrompt> BuildIntervalPrompts(IReadOnlyList<ChordSymbol> progression, IReadOnlySet<string> targetIntervals)
     {
@@ -1457,6 +2302,25 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         TimeSignature? TimeSignature = null,
         IReadOnlyList<int>? ChordLengths = null);
 
+    private sealed record ScaleSuggestion(
+        string KeyRoot,
+        PentatonicScaleKind ScaleKind,
+        int Score,
+        string Reason);
+
+    private sealed record KeyCandidate(
+        string Root,
+        bool Minor,
+        int Score,
+        int ChordMismatches,
+        string Reason);
+
+    private sealed record TunerNote(
+        string MenuKey,
+        string Name,
+        string DisplayName,
+        int MidiNote);
+
     private sealed record IntervalPrompt(ChordSymbol Chord, string Interval, BackingChord BackingChord);
 
     private sealed record BackingChord(
@@ -1519,7 +2383,11 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
     private static AudioPlayback? PlayBackingChord(BackingChord chord, int beatsPerChord, int bpm, TimeSignature timeSignature)
     {
         var path = EnsureBackingChordFile(chord, beatsPerChord, bpm, timeSignature);
+        return PlayAudioFile(path);
+    }
 
+    private static AudioPlayback? PlayAudioFile(string path)
+    {
         try
         {
             if (OperatingSystem.IsMacOS())
@@ -1545,6 +2413,61 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         catch
         {
             return null;
+        }
+    }
+
+    private static AudioPlayback? PlayTunerNote(TunerNote note)
+    {
+        var path = EnsureTunerNoteFile(note);
+        return PlayAudioFile(path);
+    }
+
+    private static string EnsureTunerNoteFile(TunerNote note)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "guitar-tui-tuner");
+        Directory.CreateDirectory(directory);
+
+        var path = Path.Combine(directory, $"{note.DisplayName.Replace('#', 's')}-v1.wav");
+        if (!File.Exists(path))
+        {
+            WriteTunerNoteWav(path, note);
+        }
+
+        return path;
+    }
+
+    private static void WriteTunerNoteWav(string path, TunerNote note)
+    {
+        const int sampleRate = 44100;
+        const short channels = 1;
+        const short bitsPerSample = 16;
+        const double durationSeconds = 5d;
+        var samples = (int)(sampleRate * durationSeconds);
+        var dataSize = samples * channels * bitsPerSample / 8;
+        var frequency = TunerFrequency(note.MidiNote);
+
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream, Encoding.ASCII);
+
+        writer.Write(Encoding.ASCII.GetBytes("RIFF"));
+        writer.Write(36 + dataSize);
+        writer.Write(Encoding.ASCII.GetBytes("WAVE"));
+        writer.Write(Encoding.ASCII.GetBytes("fmt "));
+        writer.Write(16);
+        writer.Write((short)1);
+        writer.Write(channels);
+        writer.Write(sampleRate);
+        writer.Write(sampleRate * channels * bitsPerSample / 8);
+        writer.Write((short)(channels * bitsPerSample / 8));
+        writer.Write(bitsPerSample);
+        writer.Write(Encoding.ASCII.GetBytes("data"));
+        writer.Write(dataSize);
+
+        for (var sample = 0; sample < samples; sample++)
+        {
+            var time = sample / (double)sampleRate;
+            var value = TunerTone(frequency, time, durationSeconds);
+            writer.Write((short)(value * short.MaxValue));
         }
     }
 
@@ -1593,7 +2516,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         var durationKey = Math.Round(durationSeconds, 3).ToString("0.000").Replace('.', '-');
         var overlapKey = Math.Round(overlapSeconds, 3).ToString("0.000").Replace('.', '-');
         var intervalKey = string.Join("-", chord.Intervals.OrderBy(LabelSortOrderForBacking)).Replace("#", "s", StringComparison.Ordinal);
-        return Path.Combine(directory, $"{chord.Root.Replace('#', 's')}-{chord.Quality}-{chord.Suffix}-{intervalKey}-{bpm}-{timeSignature.DisplayName.Replace('/', '-')}-{durationKey}-{overlapKey}-v7.wav");
+        return Path.Combine(directory, $"{chord.Root.Replace('#', 's')}-{chord.Quality}-{chord.Suffix}-{intervalKey}-{bpm}-{timeSignature.DisplayName.Replace('/', '-')}-{durationKey}-{overlapKey}-v8.wav");
     }
 
     private static void WriteBackingChordWav(
@@ -1660,7 +2583,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
             }
 
             value += ChordWash(guitarFrequencies, time, totalDurationSeconds, durationSeconds) * 0.18;
-            value = Math.Tanh(value) * 0.75d;
+            value = Math.Tanh(value) * 0.55d;
             writer.Write((short)(value * short.MaxValue));
         }
     }
@@ -1833,8 +2756,29 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
     private static double MidiToFrequency(int midiNote) => 440d * Math.Pow(2d, (midiNote - 69) / 12d);
 
+    private static double TunerFrequency(int midiNote) => MidiToFrequency(midiNote);
+
+    private static double TunerTone(double frequency, double time, double durationSeconds)
+    {
+        var attack = Math.Min(1, time / 0.025);
+        var releaseStart = durationSeconds - 0.3;
+        var release = time > releaseStart
+            ? Math.Max(0, (durationSeconds - time) / 0.3)
+            : 1;
+        var envelope = attack * release;
+        var tone = Math.Sin(2d * Math.PI * frequency * time)
+            + 0.18d * Math.Sin(2d * Math.PI * frequency * 2d * time)
+            + 0.08d * Math.Sin(2d * Math.PI * frequency * 3d * time);
+
+        return Math.Tanh(tone * 0.85d) * envelope * 0.7d;
+    }
+
     private sealed class VoiceAnnouncer : IDisposable
     {
+        private const int MacVoiceRate = 210;
+        private const string MacDefaultVoiceVolumePrefix = "[[volm 0.7]] ";
+        private const string MacLoudVoiceVolumePrefix = "[[volm 1.0]] ";
+
         private dynamic? _windowsVoice;
         private Process? _macVoiceProcess;
 
@@ -1931,19 +2875,27 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         private void SayMac(string text)
         {
             Stop();
+            var volumePrefix = text == "a"
+                ? MacLoudVoiceVolumePrefix
+                : MacDefaultVoiceVolumePrefix;
             _macVoiceProcess = Process.Start(new ProcessStartInfo
             {
                 FileName = "say",
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                ArgumentList = { "-r", "210", $"[[volm 0.7]] {text}" }
+                ArgumentList = { "-r", MacVoiceRate.ToString(), $"{volumePrefix}{text}" }
             });
         }
 
         private static string SpokenChordName(ChordSymbol chord)
         {
             var root = chord.Root.Replace("#", " sharp ", StringComparison.Ordinal).Trim();
-            return chord.Quality == ChordQuality.Minor ? $"{root} minor" : root;
+            if (chord.Quality == ChordQuality.Minor)
+            {
+                return $"{root} minor";
+            }
+
+            return root == "A" ? "a" : root;
         }
     }
 

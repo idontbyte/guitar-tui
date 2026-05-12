@@ -13,7 +13,7 @@ public sealed class TriadProgressionGameLibrary(
 
     public static readonly IReadOnlyList<PresetChordProgression> PresetProgressions =
     [
-        Song(1, "Wonderwall", "Oasis", "Em G D A", 87),
+        Song(1, "Wonderwall", "Oasis", "Em G D A", 87, chordLengths: [2, 2, 2, 2]),
         Song(2, "Perfect", "Ed Sheeran", "G Em C D", 95, SixEight),
         Song(3, "Hallelujah", "Leonard Cohen / Jeff Buckley", "C Am C Am F G C G", 56, SixEight),
         Song(4, "Can't Help Falling In Love", "Elvis Presley", "C Em Am F C G", 100, ThreeFour),
@@ -24,7 +24,7 @@ public sealed class TriadProgressionGameLibrary(
         Song(9, "Yellow", "Coldplay", "B F# E B", 86),
         Song(10, "Creep", "Radiohead", "G B C Cm", 92),
         Song(11, "Zombie", "The Cranberries", "Em C G D", 83),
-        Song(12, "House Of The Rising Sun", "The Animals", "Am C D F Am E Am E", 80, SixEight),
+        Song(12, "House Of The Rising Sun", "The Animals", "Am C D F Am E Am E", 120, SixEight),
         Song(13, "Smells Like Teen Spirit", "Nirvana", "F A# G# C#", 117),
         Song(14, "Sweet Child O' Mine", "Guns N' Roses", "D C G D", 125),
         Song(15, "Hotel California", "Eagles", "Bm F# A E G D Em F#", 74),
@@ -183,10 +183,11 @@ public sealed class TriadProgressionGameLibrary(
         string artist,
         string progressionText,
         int bpm,
-        TimeSignature? timeSignature = null)
+        TimeSignature? timeSignature = null,
+        IReadOnlyList<int>? chordLengths = null)
     {
         var meter = timeSignature ?? FourFour;
-        return new PresetChordProgression(number, title, artist, progressionText, bpm, meter, OneMeasureEach(progressionText, meter.BeatsPerBar));
+        return new PresetChordProgression(number, title, artist, progressionText, bpm, meter, chordLengths ?? OneMeasureEach(progressionText, meter.BeatsPerBar));
     }
 
     private static IReadOnlyList<int> OneMeasureEach(string progressionText, int beatsPerMeasure)
