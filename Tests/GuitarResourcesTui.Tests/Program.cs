@@ -3,9 +3,11 @@ using GuitarResourcesTui.Fretboards;
 using GuitarResourcesTui.IntervalMaps;
 using GuitarResourcesTui.Pentatonics;
 using GuitarResourcesTui.Triads;
+using GuitarResourcesTui.Tui;
 
 new TriadInversionTests().RunAll();
 new TriadProgressionGameTests().RunAll();
+new BackingSynthTests().RunAll();
 new PentatonicShapeTests().RunAll();
 new IntervalFunctionMapTests().RunAll();
 Console.WriteLine("All tests passed.");
@@ -451,6 +453,55 @@ internal sealed class PentatonicShapeTests
             TestAssert.Equal(expectedLabel, position.Label, $"{root} {scaleKind} shape {shape.Number} labels intervals correctly");
             TestAssert.True(position.Fret >= shape.Diagram.StartFret, $"{root} {scaleKind} shape {shape.Number} position starts inside diagram");
             TestAssert.True(position.Fret < shape.Diagram.StartFret + shape.Diagram.Length, $"{root} {scaleKind} shape {shape.Number} position ends inside diagram");
+        }
+    }
+}
+
+internal sealed class BackingSynthTests
+{
+    public void RunAll()
+    {
+        var frequencies = GuitarChordFrequencies(new ChordSymbol("C", ChordQuality.Major)).ToArray();
+
+        AssertEqual(6, frequencies.Length, "C major synth chord has six guitar strings");
+        AssertNear(MidiToFrequency(48), frequencies[0], "C major synth root is C3");
+        AssertNear(MidiToFrequency(52), frequencies[1], "C major synth third is E3");
+        AssertNear(MidiToFrequency(55), frequencies[2], "C major synth fifth is G3");
+        AssertNear(MidiToFrequency(60), frequencies[3], "C major synth octave is C4");
+        AssertNear(MidiToFrequency(64), frequencies[4], "C major synth high third is E4");
+        AssertNear(MidiToFrequency(67), frequencies[5], "C major synth high fifth is G4");
+    }
+
+    private static IEnumerable<double> GuitarChordFrequencies(ChordSymbol chord)
+    {
+        var method = typeof(App).GetMethod("GuitarChordFrequencies", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert(method is not null, "GuitarChordFrequencies exists");
+        return (IEnumerable<double>)method!.Invoke(null, [chord])!;
+    }
+
+    private static double MidiToFrequency(int midiNote) => 440d * Math.Pow(2d, (midiNote - 69) / 12d);
+
+    private static void AssertNear(double expected, double actual, string message)
+    {
+        if (Math.Abs(expected - actual) > 0.001)
+        {
+            throw new InvalidOperationException($"{message}. Expected {expected}, got {actual}.");
+        }
+    }
+
+    private static void AssertEqual<T>(T expected, T actual, string message)
+    {
+        if (!EqualityComparer<T>.Default.Equals(expected, actual))
+        {
+            throw new InvalidOperationException($"{message}. Expected {expected}, got {actual}.");
+        }
+    }
+
+    private static void Assert(bool condition, string message)
+    {
+        if (!condition)
+        {
+            throw new InvalidOperationException(message);
         }
     }
 }

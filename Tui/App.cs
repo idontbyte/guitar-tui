@@ -133,6 +133,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         var beat = 0;
         var paused = false;
         var lastSynthChordIndex = -1;
+        var lastRenderedChordIndex = -1;
         var phraseLength = chordLengths.Sum();
         var synthProcesses = new List<AudioPlayback>();
         WarmBackingChords(currentPhrase, chordLengths, bpm, timeSignature);
@@ -146,6 +147,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                 var chordIndex = ChordIndexAtBeat(chordLengths, beat);
                 var beatWithinChord = beat - StartBeatForChord(chordLengths, chordIndex);
                 var beatWithinBar = beat % timeSignature.BeatsPerBar;
+                var chordChanged = chordIndex != lastRenderedChordIndex;
 
                 if (!paused && backingEnabled && chordIndex != lastSynthChordIndex)
                 {
@@ -158,7 +160,11 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                     lastSynthChordIndex = chordIndex;
                 }
 
-                RenderTriadProgressionGame(setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                if (chordChanged)
+                {
+                    RenderTriadProgressionGame(setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                    lastRenderedChordIndex = chordIndex;
+                }
 
                 if (!paused && clickEnabled)
                 {
@@ -229,6 +235,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                     WarmBackingChords(nextPhrase, chordLengths, bpm, timeSignature);
                     beat = 0;
                     lastSynthChordIndex = -1;
+                    lastRenderedChordIndex = -1;
                 }
             }
         }
@@ -610,7 +617,6 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         Console.Clear();
         WriteHeader("Triad music game");
         Console.WriteLine($"Song: {title}");
-        Console.WriteLine($"Progression: {string.Join(" - ", currentPhrase.Select(item => item.Chord.DisplayName))}");
         Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
         Console.WriteLine("Space = pause, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
         Console.WriteLine();
@@ -626,6 +632,8 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         }
 
         Console.WriteLine();
+        WriteCenteredHighlightedProgression(currentPhrase, chordIndex);
+        Console.WriteLine();
         Console.WriteLine("Up next");
         var nextDiagrams = nextPhrase
             .Select((item, index) => ($"  {item.Title} [{chordLengths[index]} beat{Pluralize(chordLengths[index])}]", item.Diagram))
@@ -634,6 +642,36 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         foreach (var line in _renderer.RenderMany(nextDiagrams, GetUsableConsoleWidth()))
         {
             Console.WriteLine(line);
+        }
+    }
+
+    private static void WriteCenteredHighlightedProgression(IReadOnlyList<TriadPracticeItem> phrase, int chordIndex)
+    {
+        const string label = "Progression: ";
+        var progressionText = string.Join(" - ", phrase.Select(item => item.Chord.DisplayName));
+        var textLength = label.Length + progressionText.Length;
+        var padding = Math.Max(0, (GetUsableConsoleWidth() - textLength) / 2);
+
+        Console.Write(new string(' ', padding));
+        Console.Write(label);
+
+        for (var index = 0; index < phrase.Count; index++)
+        {
+            if (index > 0)
+            {
+                Console.Write(" - ");
+            }
+
+            if (index == chordIndex)
+            {
+                Console.Write(Third);
+                Console.Write(phrase[index].Chord.DisplayName);
+                Console.Write(Reset);
+            }
+            else
+            {
+                Console.Write(phrase[index].Chord.DisplayName);
+            }
         }
     }
 
@@ -776,7 +814,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
         var durationKey = Math.Round(durationSeconds, 3).ToString("0.000").Replace('.', '-');
         var overlapKey = Math.Round(overlapSeconds, 3).ToString("0.000").Replace('.', '-');
-        return Path.Combine(directory, $"{chord.Root.Replace('#', 's')}-{chord.Quality}-{bpm}-{timeSignature.DisplayName.Replace('/', '-')}-{durationKey}-{overlapKey}-v5.wav");
+        return Path.Combine(directory, $"{chord.Root.Replace('#', 's')}-{chord.Quality}-{bpm}-{timeSignature.DisplayName.Replace('/', '-')}-{durationKey}-{overlapKey}-v6.wav");
     }
 
     private static void WriteBackingChordWav(
@@ -852,7 +890,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
     {
         var rootPitch = MusicTheory.PitchClassFor(chord.Root);
         var thirdInterval = chord.Quality == ChordQuality.Major ? 4 : 3;
-        var midiRoot = 52 + rootPitch;
+        var midiRoot = 48 + rootPitch;
 
         while (midiRoot > 64)
         {

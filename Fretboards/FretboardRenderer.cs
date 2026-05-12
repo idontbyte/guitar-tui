@@ -22,7 +22,6 @@ public sealed class FretboardRenderer
     private const string HighlightFifth = "\e[1;38;5;16;48;5;39m";
     private const string HighlightOther = "\e[1;38;5;16;48;5;231m";
     private const string HighlightEmpty = "\e[38;5;236;48;5;235m";
-    private const string HighlightTitle = "\e[1;38;5;16;48;5;230m";
 
     private static readonly Regex AnsiPattern = new(@"\e\[[0-9;]*m", RegexOptions.Compiled);
 
@@ -87,9 +86,31 @@ public sealed class FretboardRenderer
         var body = Render(item.Diagram, highlighted);
         var width = Math.Max(VisibleLength(item.Title), body.Max(VisibleLength));
         var title = highlighted
-            ? Color(PadRightVisible(item.Title, width), HighlightTitle)
+            ? PadRightVisible(HighlightTitleChord(item.Title), width)
             : PadRightVisible(item.Title, width);
         return [title, .. body.Select(line => PadRightVisible(line, width))];
+    }
+
+    private static string HighlightTitleChord(string title)
+    {
+        var chordStart = title.StartsWith("> ", StringComparison.Ordinal) ? 2 : 0;
+        while (chordStart < title.Length && title[chordStart] == ' ')
+        {
+            chordStart++;
+        }
+
+        if (chordStart >= title.Length)
+        {
+            return title;
+        }
+
+        var chordEnd = title.IndexOf(' ', chordStart);
+        if (chordEnd < 0)
+        {
+            chordEnd = title.Length;
+        }
+
+        return title[..chordStart] + Color(title[chordStart..chordEnd], Third) + title[chordEnd..];
     }
 
     private static IReadOnlyList<IReadOnlyList<string[]>> WrapRenderedDiagrams(IReadOnlyList<string[]> rendered, int maxWidth)
