@@ -35,7 +35,46 @@ public sealed class IntervalFunctionMapLibrary
         [11] = "7"
     };
 
+    public static readonly IReadOnlyList<string> IntervalLabels = ["R", "b2", "2", "b3", "3", "4", "b5", "5", "b6", "6", "b7", "7"];
+
     public FretboardDiagram BuildMap(string root, int anchorFret, int length = DefaultWindowLength)
+    {
+        return BuildMap(root, anchorFret, labels: null, includeRoot: true, length);
+    }
+
+    public FretboardDiagram BuildLookup(
+        string root,
+        int anchorFret,
+        IReadOnlySet<string> labels,
+        bool includeRoot = true,
+        int length = DefaultWindowLength)
+    {
+        return BuildMap(root, anchorFret, labels, includeRoot, length);
+    }
+
+    public static string NameForInterval(string label) => label switch
+    {
+        "R" => "root",
+        "b2" => "flat two",
+        "2" => "second",
+        "b3" => "flat three",
+        "3" => "third",
+        "4" => "fourth",
+        "b5" => "flat five",
+        "5" => "fifth",
+        "b6" => "flat six",
+        "6" => "sixth",
+        "b7" => "flat seven",
+        "7" => "seventh",
+        _ => label
+    };
+
+    private FretboardDiagram BuildMap(
+        string root,
+        int anchorFret,
+        IReadOnlySet<string>? labels,
+        bool includeRoot,
+        int length)
     {
         if (length < 1)
         {
@@ -53,10 +92,16 @@ public sealed class IntervalFunctionMapLibrary
             {
                 var pitch = MusicTheory.Normalize(Tuning[stringIndex].PitchClass + fret);
                 var interval = MusicTheory.Normalize(pitch - rootPitch);
+                var label = LabelsByInterval[interval];
+                if (labels is not null && !labels.Contains(label) && !(includeRoot && label == "R"))
+                {
+                    continue;
+                }
+
                 positions.Add(new FretPosition(
                     stringIndex,
                     fret,
-                    LabelsByInterval[interval],
+                    label,
                     SourceStringIndex: stringIndex));
             }
         }

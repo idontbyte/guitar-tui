@@ -2,7 +2,10 @@ using GuitarResourcesTui.Fretboards;
 
 namespace GuitarResourcesTui.Triads;
 
-public sealed class TriadProgressionGameLibrary(TriadInversionLibrary triads, Random? random = null)
+public sealed class TriadProgressionGameLibrary(
+    TriadInversionLibrary triads,
+    Random? random = null,
+    TriadVoicingKind voicingKind = TriadVoicingKind.Close)
 {
     private static readonly TimeSignature FourFour = new(4, 4);
     private static readonly TimeSignature ThreeFour = new(3, 4);
@@ -221,7 +224,7 @@ public sealed class TriadProgressionGameLibrary(TriadInversionLibrary triads, Ra
     private IEnumerable<TriadPracticeItem> GetCandidates(ChordSymbol chord)
     {
         return triads
-            .GetTriadInversions(chord.Root, chord.Quality)
+            .GetTriadShapes(chord.Root, chord.Quality, voicingKind)
             .SelectMany(grouping => grouping.Shapes.Select(shape => new TriadPracticeItem(chord, grouping.Name, shape)));
     }
 
@@ -305,6 +308,26 @@ public sealed class TriadProgressionGameLibrary(TriadInversionLibrary triads, Ra
         };
 
         return FlatRootAliases.GetValueOrDefault(normalized, normalized);
+    }
+}
+
+public enum TriadVoicingKind
+{
+    Close,
+    Spread
+}
+
+public static class TriadVoicingExtensions
+{
+    public static IReadOnlyList<TriadGroupingResult> GetTriadShapes(
+        this TriadInversionLibrary triads,
+        string root,
+        ChordQuality quality,
+        TriadVoicingKind voicingKind)
+    {
+        return voicingKind == TriadVoicingKind.Spread
+            ? triads.GetSpreadTriads(root, quality)
+            : triads.GetTriadInversions(root, quality);
     }
 }
 

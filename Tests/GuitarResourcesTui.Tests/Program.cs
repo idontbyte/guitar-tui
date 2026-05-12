@@ -185,6 +185,19 @@ internal sealed class TriadProgressionGameTests
 
         AssertSequenceEqual([4, 2, 2, 8], game.ParseChordLengths("4 2 2 8", 4, 4), "custom chord lengths parse");
         AssertSequenceEqual([3, 3, 3, 3], game.ParseChordLengths("", 4, 3), "blank chord lengths use default");
+
+        var spreadGame = new TriadProgressionGameLibrary(new TriadInversionLibrary(), new Random(7), TriadVoicingKind.Spread);
+        var spreadPhrase = spreadGame.BuildPhrase(progression);
+        AssertEqual(progression.Count, spreadPhrase.Count, "spread phrase has one triad per chord");
+
+        foreach (var item in spreadPhrase)
+        {
+            Assert(new[] { "E B D", "B G A", "G D E" }.Contains(item.GroupingName), $"{item.Title} uses a spread string grouping");
+            Assert(item.Shape.MaxFret - item.Shape.MinFret <= 4, $"{item.Title} fits in a reachable spread window");
+            AssertSequenceEqual(["E", "B", "G", "D", "A", "E"], item.Diagram.Strings, $"{item.Title} renders on the full fretboard");
+            AssertSequenceEqual(["R", "3", "5"], item.Diagram.Positions.Select(position => position.Label).OrderBy(LabelSortOrder), $"{item.Title} contains a full spread triad");
+            Assert(new[] { "R53", "3R5", "53R" }.Contains(LowToHighFunctions(item)), $"{item.Title} uses a real spread-triad order");
+        }
     }
 
     private static void Assert(bool condition, string message)
@@ -221,6 +234,13 @@ internal sealed class TriadProgressionGameTests
         "5" => 2,
         _ => 99
     };
+
+    private static string LowToHighFunctions(TriadPracticeItem item)
+    {
+        return string.Concat(item.Diagram.Positions
+            .OrderByDescending(position => position.SourceStringIndex)
+            .Select(position => position.Label));
+    }
 }
 
 internal sealed class PentatonicShapeTests
@@ -474,7 +494,10 @@ internal sealed class BackingSynthTests
 
     private static IEnumerable<double> GuitarChordFrequencies(ChordSymbol chord)
     {
-        var method = typeof(App).GetMethod("GuitarChordFrequencies", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var method = typeof(App).GetMethod(
+            "GuitarChordFrequencies",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+            [typeof(ChordSymbol)]);
         Assert(method is not null, "GuitarChordFrequencies exists");
         return (IEnumerable<double>)method!.Invoke(null, [chord])!;
     }

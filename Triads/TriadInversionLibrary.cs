@@ -6,6 +6,7 @@ public sealed class TriadInversionLibrary
 {
     private const int SearchFrets = 15;
     private const int WindowLength = 4;
+    private const int SpreadWindowLength = 5;
 
     private static readonly IReadOnlyList<GuitarString> Tuning =
     [
@@ -25,13 +26,42 @@ public sealed class TriadInversionLibrary
         new("D A E", [3, 4, 5])
     ];
 
+    private static readonly IReadOnlyList<StringGrouping> SpreadGroupings =
+    [
+        new("E B D", [0, 1, 3]),
+        new("B G A", [1, 2, 4]),
+        new("G D E", [2, 3, 5])
+    ];
+
+    private static readonly IReadOnlyList<IReadOnlyList<string>> SpreadFunctionOrders =
+    [
+        ["R", "5", "3"],
+        ["3", "R", "5"],
+        ["5", "3", "R"]
+    ];
+
     public IReadOnlyList<TriadGroupingResult> GetTriadInversions(string root, ChordQuality quality)
+    {
+        return GetTriadShapes(root, quality, Groupings, WindowLength, allowedLowToHighFunctionOrders: null);
+    }
+
+    public IReadOnlyList<TriadGroupingResult> GetSpreadTriads(string root, ChordQuality quality)
+    {
+        return GetTriadShapes(root, quality, SpreadGroupings, SpreadWindowLength, SpreadFunctionOrders);
+    }
+
+    private static IReadOnlyList<TriadGroupingResult> GetTriadShapes(
+        string root,
+        ChordQuality quality,
+        IReadOnlyList<StringGrouping> groupings,
+        int windowLength,
+        IReadOnlyList<IReadOnlyList<string>>? allowedLowToHighFunctionOrders)
     {
         var chordTones = MusicTheory.BuildTriad(root, quality);
         var chordPitchClasses = chordTones.Select(tone => tone.PitchClass).ToHashSet();
         var results = new List<TriadGroupingResult>();
 
-        foreach (var grouping in Groupings)
+        foreach (var grouping in groupings)
         {
             var positionsByString = grouping.StringIndexes
                 .Select(stringIndex => PositionsForString(stringIndex, chordPitchClasses))
@@ -39,8 +69,9 @@ public sealed class TriadInversionLibrary
 
             var shapes = Cartesian(positionsByString)
                 .Where(shape => shape.Select(position => position.PitchClass).Distinct().Count() == 3)
-                .Where(shape => shape.Max(position => position.Fret) - shape.Min(position => position.Fret) <= WindowLength - 1)
-                .Select(shape => BuildShape(grouping, shape, chordTones))
+                .Where(shape => shape.Max(position => position.Fret) - shape.Min(position => position.Fret) <= windowLength - 1)
+                .Where(shape => HasAllowedFunctionOrder(shape, chordTones, allowedLowToHighFunctionOrders))
+                .Select(shape => BuildShape(grouping, shape, chordTones, windowLength))
                 .ToList();
 
             var inversionShapes = chordTones
@@ -64,11 +95,33 @@ public sealed class TriadInversionLibrary
             .FirstOrDefault();
     }
 
-    private static TriadShape BuildShape(StringGrouping grouping, IReadOnlyList<StringPosition> shape, IReadOnlyList<TriadTone> chordTones)
+    private static bool HasAllowedFunctionOrder(
+        IReadOnlyList<StringPosition> shape,
+        IReadOnlyList<TriadTone> chordTones,
+        IReadOnlyList<IReadOnlyList<string>>? allowedLowToHighFunctionOrders)
+    {
+        if (allowedLowToHighFunctionOrders is null)
+        {
+            return true;
+        }
+
+        var lowToHighFunctions = shape
+            .Reverse()
+            .Select(position => chordTones.Single(tone => tone.PitchClass == position.PitchClass).Function)
+            .ToArray();
+
+        return allowedLowToHighFunctionOrders.Any(order => order.SequenceEqual(lowToHighFunctions));
+    }
+
+    private static TriadShape BuildShape(
+        StringGrouping grouping,
+        IReadOnlyList<StringPosition> shape,
+        IReadOnlyList<TriadTone> chordTones,
+        int windowLength)
     {
         var minFret = shape.Min(position => position.Fret);
         var maxFret = shape.Max(position => position.Fret);
-        var startFret = minFret == 0 ? 0 : Math.Max(1, maxFret - WindowLength + 1);
+        var startFret = minFret == 0 ? 0 : Math.Max(1, maxFret - windowLength + 1);
         var strings = grouping.StringIndexes.Select(index => Tuning[index].Name).ToArray();
         var bassStringIndex = grouping.StringIndexes.Count - 1;
         var bassPitch = shape[bassStringIndex].PitchClass;
@@ -80,7 +133,7 @@ public sealed class TriadInversionLibrary
             return new FretPosition(displayStringIndex, position.Fret, tone.Function, SourceStringIndex: position.StringIndex);
         }).ToArray();
 
-        var diagram = new FretboardDiagram(strings, startFret, WindowLength, positions);
+        var diagram = new FretboardDiagram(strings, startFret, windowLength, positions);
         return new TriadShape(MusicTheory.InversionName(bassFunction), bassFunction, minFret, maxFret, diagram);
     }
 

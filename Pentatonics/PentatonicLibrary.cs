@@ -210,6 +210,53 @@ public sealed class PentatonicLibrary
         }).ToArray();
     }
 
+    public FretboardDiagram BuildScaleWindow(
+        string root,
+        PentatonicScaleKind kind,
+        int startFret,
+        int length,
+        ChordSymbol? currentChord = null)
+    {
+        if (length < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length), "Scale window length must be at least one fret.");
+        }
+
+        var rootPitch = MusicTheory.PitchClassFor(root);
+        var scale = Scales[kind];
+        var labelsByPitchClass = scale.Intervals
+            .ToDictionary(interval => MusicTheory.Normalize(rootPitch + interval.Semitones), interval => interval.Label);
+        var chordLabelsByPitchClass = currentChord is null
+            ? new Dictionary<int, string>()
+            : MusicTheory.BuildTriad(currentChord.Root, currentChord.Quality)
+                .ToDictionary(tone => tone.PitchClass, tone => tone.Function);
+        var positions = new List<FretPosition>();
+
+        for (var displayString = 0; displayString < Tuning.Count; displayString++)
+        {
+            for (var fret = startFret; fret < startFret + length; fret++)
+            {
+                var pitch = MusicTheory.Normalize(Tuning[displayString].PitchClass + fret);
+                if (!labelsByPitchClass.TryGetValue(pitch, out var label))
+                {
+                    continue;
+                }
+
+                positions.Add(new FretPosition(
+                    displayString,
+                    fret,
+                    chordLabelsByPitchClass.GetValueOrDefault(pitch, label),
+                    SourceStringIndex: displayString));
+            }
+        }
+
+        return new FretboardDiagram(
+            Tuning.Select(guitarString => guitarString.Name).ToArray(),
+            startFret,
+            length,
+            positions);
+    }
+
     public static string NameFor(PentatonicScaleKind kind) => Scales[kind].Name;
 
     public static PentatonicScaleKind ToggleMajorMinor(PentatonicScaleKind kind) => kind switch
