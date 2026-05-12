@@ -390,6 +390,22 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                                 }
                                 RenderChordDiagramSongGame(gameTitle, setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, buildDiagram);
                                 break;
+                            case ConsoleKey.OemMinus:
+                            case ConsoleKey.Subtract:
+                                bpm = AdjustBpm(bpm, -5);
+                                StopProcesses(synthProcesses);
+                                WarmBackingChords(progression, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
+                                RenderChordDiagramSongGame(gameTitle, setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, buildDiagram);
+                                break;
+                            case ConsoleKey.OemPlus:
+                            case ConsoleKey.Add:
+                                bpm = AdjustBpm(bpm, 5);
+                                StopProcesses(synthProcesses);
+                                WarmBackingChords(progression, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
+                                RenderChordDiagramSongGame(gameTitle, setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, buildDiagram);
+                                break;
                             case ConsoleKey.N:
                             case ConsoleKey.RightArrow:
                                 beat = StartBeatForChord(chordLengths, chordIndex + 1);
@@ -576,6 +592,24 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                                 {
                                     voiceAnnouncer.Stop();
                                 }
+                                RenderTriadProgressionGame(gameTitle, setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, voiceEnabled, paused);
+                                break;
+                            case ConsoleKey.OemMinus:
+                            case ConsoleKey.Subtract:
+                                bpm = AdjustBpm(bpm, -5);
+                                StopProcesses(synthProcesses);
+                                WarmBackingChords(currentPhrase, chordLengths, bpm, timeSignature);
+                                WarmBackingChords(nextPhrase, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
+                                RenderTriadProgressionGame(gameTitle, setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, voiceEnabled, paused);
+                                break;
+                            case ConsoleKey.OemPlus:
+                            case ConsoleKey.Add:
+                                bpm = AdjustBpm(bpm, 5);
+                                StopProcesses(synthProcesses);
+                                WarmBackingChords(currentPhrase, chordLengths, bpm, timeSignature);
+                                WarmBackingChords(nextPhrase, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
                                 RenderTriadProgressionGame(gameTitle, setup.Title, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, voiceEnabled, paused);
                                 break;
                             case ConsoleKey.N:
@@ -1057,6 +1091,22 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                                 }
                                 RenderIntervalSongGame(setup.Title, progression, prompts, phraseAnchors, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, keyRoot);
                                 break;
+                            case ConsoleKey.OemMinus:
+                            case ConsoleKey.Subtract:
+                                bpm = AdjustBpm(bpm, -5);
+                                StopProcesses(synthProcesses);
+                                WarmIntervalBackingChords(prompts, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
+                                RenderIntervalSongGame(setup.Title, progression, prompts, phraseAnchors, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, keyRoot);
+                                break;
+                            case ConsoleKey.OemPlus:
+                            case ConsoleKey.Add:
+                                bpm = AdjustBpm(bpm, 5);
+                                StopProcesses(synthProcesses);
+                                WarmIntervalBackingChords(prompts, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
+                                RenderIntervalSongGame(setup.Title, progression, prompts, phraseAnchors, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, keyRoot);
+                                break;
                             case ConsoleKey.N:
                             case ConsoleKey.RightArrow:
                                 beat = StartBeatForChord(chordLengths, chordIndex + 1);
@@ -1330,7 +1380,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         WriteHeader(gameTitle);
         Console.WriteLine($"Song: {title}");
         Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  Voice: {(voiceEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
-        Console.WriteLine("Space = pause, M = mute click, S = mute backing, V = mute voice, N = next chord, B/Q = main menu");
+        Console.WriteLine("Space = pause, -/+ = tempo, M = mute click, S = mute backing, V = mute voice, N = next chord, B/Q = main menu");
         Console.WriteLine();
 
         Console.WriteLine($"Now: {currentPhrase[chordIndex].Chord.DisplayName}  chord beat {beatWithinChord + 1}/{chordLengths[chordIndex]}  bar beat {beatWithinBar + 1}/{timeSignature.BeatsPerBar}");
@@ -1389,7 +1439,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         WriteHeader(gameTitle);
         Console.WriteLine($"Song: {title}");
         Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
-        Console.WriteLine("Space = pause, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
+        Console.WriteLine("Space = pause, -/+ = tempo, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
         Console.WriteLine();
         Console.WriteLine($"Now: {currentChord.DisplayName}  chord beat {beatWithinChord + 1}/{chordLengths[chordIndex]}  bar beat {beatWithinBar + 1}/{timeSignature.BeatsPerBar}");
         Console.WriteLine($"Labels: {Root}R{Reset} = root, {Third}3/b3{Reset} = third, {Fifth}5{Reset} = fifth, X = muted string");
@@ -1553,6 +1603,22 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                                 }
                                 RenderScaleSongGame(setup.Title, keyRoot, scaleKind, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
                                 break;
+                            case ConsoleKey.OemMinus:
+                            case ConsoleKey.Subtract:
+                                bpm = AdjustBpm(bpm, -5);
+                                StopProcesses(synthProcesses);
+                                WarmBackingChords(progression, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
+                                RenderScaleSongGame(setup.Title, keyRoot, scaleKind, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                                break;
+                            case ConsoleKey.OemPlus:
+                            case ConsoleKey.Add:
+                                bpm = AdjustBpm(bpm, 5);
+                                StopProcesses(synthProcesses);
+                                WarmBackingChords(progression, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
+                                RenderScaleSongGame(setup.Title, keyRoot, scaleKind, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                                break;
                             case ConsoleKey.N:
                             case ConsoleKey.RightArrow:
                                 beat = StartBeatForChord(chordLengths, chordIndex + 1);
@@ -1688,6 +1754,22 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
                                 }
                                 RenderScaleLibrarySongGame(setup.Title, progression, suggestions, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
                                 break;
+                            case ConsoleKey.OemMinus:
+                            case ConsoleKey.Subtract:
+                                bpm = AdjustBpm(bpm, -5);
+                                StopProcesses(synthProcesses);
+                                WarmBackingChords(progression, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
+                                RenderScaleLibrarySongGame(setup.Title, progression, suggestions, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                                break;
+                            case ConsoleKey.OemPlus:
+                            case ConsoleKey.Add:
+                                bpm = AdjustBpm(bpm, 5);
+                                StopProcesses(synthProcesses);
+                                WarmBackingChords(progression, chordLengths, bpm, timeSignature);
+                                lastSynthChordIndex = -1;
+                                RenderScaleLibrarySongGame(setup.Title, progression, suggestions, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused);
+                                break;
                             case ConsoleKey.N:
                             case ConsoleKey.RightArrow:
                                 beat = StartBeatForChord(chordLengths, chordIndex + 1);
@@ -1743,7 +1825,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         Console.WriteLine($"Song: {title}");
         Console.WriteLine($"Key: {keyRoot} major  Current function: {Third}{romanNumerals[chordIndex]}{Reset}");
         Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
-        Console.WriteLine("Space = pause, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
+        Console.WriteLine("Space = pause, -/+ = tempo, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
         Console.WriteLine();
 
         Console.WriteLine($"Now: {prompt.Chord.DisplayName}  chord beat {beatWithinChord + 1}/{chordLengths[chordIndex]}  bar beat {beatWithinBar + 1}/{timeSignature.BeatsPerBar}");
@@ -1786,7 +1868,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         Console.WriteLine($"Song: {title}");
         Console.WriteLine($"Key: {keyRoot}  Scale: {PentatonicLibrary.NameFor(scaleKind)}  Current function: {Third}{romanNumerals[chordIndex]}{Reset}");
         Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
-        Console.WriteLine("Space = pause, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
+        Console.WriteLine("Space = pause, -/+ = tempo, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
         Console.WriteLine();
 
         Console.WriteLine($"Now: {currentChord.DisplayName}  chord beat {beatWithinChord + 1}/{chordLengths[chordIndex]}  bar beat {beatWithinBar + 1}/{timeSignature.BeatsPerBar}");
@@ -1831,7 +1913,7 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
         Console.WriteLine($"Song: {title}");
         Console.WriteLine($"Best fit: {primary.KeyRoot} {PentatonicLibrary.NameFor(primary.ScaleKind)}  Current function: {Third}{romanNumerals[chordIndex]}{Reset}");
         Console.WriteLine($"BPM: {bpm}  Time: {timeSignature.DisplayName}  Lengths: {string.Join("-", chordLengths)}  Click: {(clickEnabled ? "on" : "muted")}  Backing: {(backingEnabled ? "on" : "muted")}  {(paused ? "Paused" : "Playing")}");
-        Console.WriteLine("Space = pause, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
+        Console.WriteLine("Space = pause, -/+ = tempo, M = mute click, S = mute backing, N = next chord, B/Q = main menu");
         Console.WriteLine();
 
         Console.WriteLine($"Now: {currentChord.DisplayName}  chord beat {beatWithinChord + 1}/{chordLengths[chordIndex]}  bar beat {beatWithinBar + 1}/{timeSignature.BeatsPerBar}");
@@ -2292,6 +2374,8 @@ public sealed class App(TriadInversionLibrary triads, PentatonicLibrary pentaton
 
         return start;
     }
+
+    private static int AdjustBpm(int bpm, int delta) => Math.Clamp(bpm + delta, 30, 240);
 
     private static string Pluralize(int count) => count == 1 ? string.Empty : "s";
 

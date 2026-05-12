@@ -13,6 +13,14 @@ dotnet run
 dotnet run --project Tests/GuitarResourcesTui.Tests/GuitarResourcesTui.Tests.csproj
 ```
 
+## Windows installer
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Installer\Build-WindowsInstaller.ps1
+```
+
+The installer is written to `artifacts/GuitarTUI-Setup-win-x64.exe` and installs the app as `Guitar TUI`.
+
 ## Features
 
 - Triad inversions across adjacent string groupings
