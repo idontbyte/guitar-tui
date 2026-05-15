@@ -1,4 +1,5 @@
 using GuitarResourcesTui.Triads;
+using GuitarResourcesTui.JazzChords;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -52,6 +53,11 @@ public sealed partial class App
     }
 
     private static AudioPlayback? PlayBackingChord(ChordSymbol chord, int beatsPerChord, int bpm, TimeSignature timeSignature)
+    {
+        return PlayBackingChord(BackingChordFor(chord), beatsPerChord, bpm, timeSignature);
+    }
+
+    private static AudioPlayback? PlayBackingChord(JazzChordSymbol chord, int beatsPerChord, int bpm, TimeSignature timeSignature)
     {
         return PlayBackingChord(BackingChordFor(chord), beatsPerChord, bpm, timeSignature);
     }
@@ -171,6 +177,14 @@ public sealed partial class App
         }
     }
 
+    private static void WarmJazzBackingChords(IReadOnlyList<JazzChordSymbol> progression, IReadOnlyList<int> chordLengths, int bpm, TimeSignature timeSignature)
+    {
+        for (var index = 0; index < progression.Count; index++)
+        {
+            EnsureBackingChordFile(BackingChordFor(progression[index]), chordLengths[index], bpm, timeSignature);
+        }
+    }
+
     private static string EnsureBackingChordFile(BackingChord chord, int beatsPerChord, int bpm, TimeSignature timeSignature)
     {
         var durationSeconds = beatsPerChord * 60d / bpm;
@@ -273,6 +287,12 @@ public sealed partial class App
         return new BackingChord(chord.Root, chord.Quality, intervals, chord.Quality == ChordQuality.Minor ? "m" : string.Empty);
     }
 
+    private static BackingChord BackingChordFor(JazzChordSymbol chord)
+    {
+        var quality = chord.Quality.Intervals.Contains("b3") ? ChordQuality.Minor : ChordQuality.Major;
+        return new BackingChord(chord.Root, quality, chord.Quality.Intervals.ToHashSet(), chord.Quality.Suffix);
+    }
+
     private static IEnumerable<double> GuitarChordFrequencies(ChordSymbol chord)
     {
         return GuitarChordFrequencies(BackingChordFor(chord));
@@ -314,15 +334,15 @@ public sealed partial class App
     private static int IntervalSemitones(string interval) => interval switch
     {
         "R" => 0,
-        "b2" => 1,
-        "2" => 2,
-        "b3" => 3,
+        "b2" or "b9" => 1,
+        "2" or "9" => 2,
+        "b3" or "#9" => 3,
         "3" => 4,
-        "4" => 5,
-        "b5" => 6,
+        "4" or "11" => 5,
+        "b5" or "#11" => 6,
         "5" => 7,
-        "b6" => 8,
-        "6" => 9,
+        "b6" or "b13" => 8,
+        "6" or "13" or "bb7" => 9,
         "b7" => 10,
         "7" => 11,
         _ => 0

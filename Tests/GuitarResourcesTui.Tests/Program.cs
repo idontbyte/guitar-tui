@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
+using GuitarResourcesTui.Arpeggios;
 using GuitarResourcesTui.Fretboards;
 using GuitarResourcesTui.IntervalMaps;
+using GuitarResourcesTui.JazzChords;
 using GuitarResourcesTui.Pentatonics;
 using GuitarResourcesTui.Triads;
 using GuitarResourcesTui.Tui;
@@ -11,6 +13,8 @@ new TriadProgressionGameTests().RunAll();
 new BackingSynthTests().RunAll();
 new PentatonicShapeTests().RunAll();
 new IntervalFunctionMapTests().RunAll();
+new JazzChordLibraryTests().RunAll();
+new ArpeggioLibraryTests().RunAll();
 Console.WriteLine("All tests passed.");
 
 internal sealed class FretboardRendererTests
@@ -704,6 +708,148 @@ internal sealed class IntervalFunctionMapTests
             var interval = MusicTheory.Normalize(pitch - rootPitch);
             TestAssert.Equal(ExpectedLabels[interval], position.Label, $"{root} interval map label at string {position.SourceStringIndex} fret {position.Fret}");
         }
+    }
+}
+
+internal sealed class JazzChordLibraryTests
+{
+    public void RunAll()
+    {
+        var library = new JazzChordLibrary(new Random(11));
+
+        var progression = library.ParseProgression("Dm7 G7 Cmaj7 A7b9");
+        TestAssert.Equal(4, progression.Count, "jazz parser accepts common progression text");
+        TestAssert.Equal("Dm7", progression[0].DisplayName, "minor 7 display");
+        TestAssert.Equal("G7", progression[1].DisplayName, "dominant 7 display");
+        TestAssert.Equal("Cmaj7", progression[2].DisplayName, "major 7 display");
+        TestAssert.Equal("A7b9", progression[3].DisplayName, "altered dominant display");
+        TestAssert.Equal("A#maj7", library.ParseProgression("Bbmaj7")[0].DisplayName, "flat jazz roots normalize to sharp names");
+
+        foreach (var quality in JazzChordLibrary.Qualities)
+        {
+            var groups = library.GetVoicings("C", quality);
+            TestAssert.Equal(3, groups.Count, $"{quality.Suffix} has three string-grouping buckets");
+            TestAssert.True(groups.Any(group => group.Voicings.Count > 0), $"{quality.Suffix} finds at least one playable voicing");
+
+            foreach (var voicing in groups.SelectMany(group => group.Voicings))
+            {
+                TestAssert.True(voicing.MaxFret - voicing.MinFret <= 4, $"{quality.Suffix} voicing fits a five-fret window");
+                TestAssert.SequenceEqual(quality.Intervals.OrderBy(LabelSortOrder), voicing.Diagram.Positions.Select(position => position.Label).OrderBy(LabelSortOrder), $"{quality.Suffix} voicing has the expected chord tones");
+            }
+
+            AssertVoicingMode(library, quality, JazzVoicingMode.GuideTones, JazzChordLibrary.IntervalsFor(quality, JazzVoicingMode.GuideTones));
+            AssertVoicingMode(library, quality, JazzVoicingMode.Shell, JazzChordLibrary.IntervalsFor(quality, JazzVoicingMode.Shell));
+        }
+
+        var phrase = library.BuildPhrase(progression);
+        TestAssert.Equal(progression.Count, phrase.Count, "jazz phrase has one item per chord");
+
+        foreach (var item in phrase)
+        {
+            TestAssert.SequenceEqual(["E", "B", "G", "D", "A", "E"], item.Diagram.Strings, $"{item.Title} renders on the full fretboard");
+            TestAssert.SequenceEqual(item.Chord.Quality.Intervals.OrderBy(LabelSortOrder), item.Diagram.Positions.Select(position => position.Label).OrderBy(LabelSortOrder), $"{item.Title} contains the full jazz chord");
+        }
+
+        var guideTonePhrase = library.BuildPhrase(progression, voicingMode: JazzVoicingMode.GuideTones);
+        foreach (var item in guideTonePhrase)
+        {
+            TestAssert.SequenceEqual(JazzChordLibrary.IntervalsFor(item.Chord.Quality, JazzVoicingMode.GuideTones).OrderBy(LabelSortOrder), item.Diagram.Positions.Select(position => position.Label).OrderBy(LabelSortOrder), $"{item.Title} contains only guide tones");
+        }
+
+        var shellPhrase = library.BuildPhrase(progression, voicingMode: JazzVoicingMode.Shell);
+        foreach (var item in shellPhrase)
+        {
+            TestAssert.SequenceEqual(JazzChordLibrary.IntervalsFor(item.Chord.Quality, JazzVoicingMode.Shell).OrderBy(LabelSortOrder), item.Diagram.Positions.Select(position => position.Label).OrderBy(LabelSortOrder), $"{item.Title} contains only shell tones");
+        }
+
+        var randomProgression = library.BuildRandomProgression();
+        TestAssert.Equal(4, randomProgression.Count, "random jazz arrangement has four chords");
+        TestAssert.Equal(randomProgression.Count, library.BuildPhrase(randomProgression).Count, "random jazz arrangement can build practice voicings");
+        TestAssert.Equal(JazzVoicingMode.Shell, JazzVoicingMode.GuideTones.Next(), "jazz voicing mode cycles from guide tones to shells");
+        TestAssert.Equal(JazzVoicingMode.Full, JazzVoicingMode.Shell.Next(), "jazz voicing mode cycles from shells to full");
+        TestAssert.Equal(JazzVoicingMode.GuideTones, JazzVoicingMode.Full.Next(), "jazz voicing mode cycles back to guide tones");
+        TestAssert.Equal("b3=F b7=C", JazzChordLibrary.GuideToneSummary(progression[0]), "guide tone summary names intervals and notes");
+        TestAssert.True(JazzChordLibrary.GuideToneMovement(progression[0], progression[1]).Contains("common tone F", StringComparison.Ordinal), "guide tone movement calls out common tones");
+
+        TestAssert.Equal(10, JazzChordLibrary.PresetProgressions.Count, "jazz library has ten preset progressions");
+        foreach (var preset in JazzChordLibrary.PresetProgressions)
+        {
+            var presetProgression = library.ParseProgression(preset.ProgressionText);
+            TestAssert.True(presetProgression.Count > 0, $"{preset.Name} parses");
+            TestAssert.Equal(presetProgression.Count, preset.ChordLengths.Count, $"{preset.Name} has one length per chord");
+            TestAssert.True(preset.Bpm >= 30 && preset.Bpm <= 240, $"{preset.Name} BPM is playable");
+            TestAssert.True(!string.IsNullOrWhiteSpace(preset.Concepts), $"{preset.Name} explains the study concepts");
+        }
+
+        TestAssert.SequenceEqual([4, 2, 2, 8], library.ParseChordLengths("4 2 2 8", 4, 4), "jazz custom chord lengths parse");
+        TestAssert.SequenceEqual([3, 3, 3, 3], library.ParseChordLengths("", 4, 3), "blank jazz chord lengths use default");
+    }
+
+    private static void AssertVoicingMode(
+        JazzChordLibrary library,
+        JazzChordQuality quality,
+        JazzVoicingMode voicingMode,
+        IReadOnlyList<string> expectedIntervals)
+    {
+        var groups = library.GetVoicings("C", quality, voicingMode);
+        TestAssert.True(groups.Any(group => group.Voicings.Count > 0), $"{quality.Suffix} {voicingMode.DisplayName()} finds at least one playable voicing");
+
+        foreach (var voicing in groups.SelectMany(group => group.Voicings))
+        {
+            TestAssert.SequenceEqual(expectedIntervals.OrderBy(LabelSortOrder), voicing.Diagram.Positions.Select(position => position.Label).OrderBy(LabelSortOrder), $"{quality.Suffix} {voicingMode.DisplayName()} uses the teaching tone set");
+        }
+    }
+
+    private static int LabelSortOrder(string label)
+    {
+        var semitone = JazzChordLibrary.SemitonesFor(label);
+        return label == "R" ? 0 : semitone + 1;
+    }
+}
+
+internal sealed class ArpeggioLibraryTests
+{
+    public void RunAll()
+    {
+        var library = new ArpeggioLibrary(new Random(19));
+
+        TestAssert.Equal(7, ArpeggioLibrary.Qualities.Count, "arpeggio library has foundational triad and seventh arpeggios");
+        TestAssert.SequenceEqual(["R", "3", "5"], ArpeggioLibrary.Quality(string.Empty).Intervals, "major arpeggio formula");
+        TestAssert.SequenceEqual(["R", "b3", "5", "b7"], ArpeggioLibrary.Quality("m7").Intervals, "minor 7 arpeggio formula");
+
+        var progression = library.ParseProgression("Dm7 G7 Cmaj7 Cdim7");
+        TestAssert.Equal(4, progression.Count, "arpeggio parser accepts common chord symbols");
+        TestAssert.Equal("Dm7", progression[0].DisplayName, "minor 7 display");
+        TestAssert.Equal("G7", progression[1].DisplayName, "dominant 7 display");
+        TestAssert.Equal("Cmaj7", progression[2].DisplayName, "major 7 display");
+        TestAssert.Equal("Cdim7", progression[3].DisplayName, "diminished 7 display");
+        TestAssert.Equal("A#maj7", library.ParseProgression("Bbmaj7")[0].DisplayName, "flat roots normalize in arpeggio parser");
+
+        var cMajor = new ArpeggioChordSymbol("C", ArpeggioLibrary.Quality(string.Empty));
+        TestAssert.Equal("C E G", ArpeggioLibrary.NotesFor(cMajor), "major arpeggio notes use formula intervals");
+        TestAssert.True(ArpeggioLibrary.TeachingHintFor(cMajor).Contains("landing points", StringComparison.Ordinal), "arpeggio teaching hint explains use");
+
+        foreach (var quality in ArpeggioLibrary.Qualities)
+        {
+            var shapes = library.GetShapes("C", quality);
+            TestAssert.Equal(6, shapes.Count, $"{quality.Name} has six position maps");
+
+            foreach (var shape in shapes)
+            {
+                TestAssert.Equal(6, shape.Diagram.Length, $"{quality.Name} position map has six frets");
+                TestAssert.SequenceEqual(["E", "B", "G", "D", "A", "E"], shape.Diagram.Strings, $"{quality.Name} renders on the full fretboard");
+                TestAssert.True(shape.Diagram.Positions.All(position => quality.Intervals.Contains(position.Label)), $"{quality.Name} map only contains chord tones");
+            }
+        }
+
+        var target = library.BuildPrompt(progression, new HashSet<string>(["3", "b3", "7", "b7"]));
+        TestAssert.True(target.Chord.Quality.Intervals.Contains(target.TargetInterval), "target prompt chooses a chord tone");
+        TestAssert.True(!string.IsNullOrWhiteSpace(target.TargetNote), "target prompt names the target note");
+
+        var triadChord = new ChordSymbol("A", ChordQuality.Minor);
+        TestAssert.Equal("Am", ArpeggioLibrary.FromTriadChord(triadChord).DisplayName, "triad chord maps to matching arpeggio");
+        TestAssert.SequenceEqual([4, 2, 2, 8], library.ParseChordLengths("4 2 2 8", 4, 4), "arpeggio chord lengths parse");
+        TestAssert.SequenceEqual([3, 3, 3, 3], library.ParseChordLengths("", 4, 3), "blank arpeggio chord lengths use default");
     }
 }
 

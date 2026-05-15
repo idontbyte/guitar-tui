@@ -224,11 +224,16 @@ public sealed class FretboardRenderer
     private static string DisplayLabel(string label) => label switch
     {
         "b2" => "♭2",
+        "b9" => "♭9",
         "b3" => "♭3",
+        "#9" => "♯9",
         "#4" => "♯4",
+        "#11" => "♯11",
         "b5" => "♭5",
         "b6" => "♭6",
+        "b13" => "♭13",
         "b7" => "♭7",
+        "bb7" => "♭♭7",
         _ => label
     };
 
@@ -242,6 +247,7 @@ public sealed class FretboardRenderer
                 "3" => "\e[1;38;5;220;48;5;238m",
                 "b3" => "\e[1;38;5;220;48;5;238m",
                 "5" => "\e[1;38;5;39;48;5;238m",
+                "b5" => "\e[1;38;5;39;48;5;238m",
                 "X" => "\e[1;38;5;196;48;5;238m",
                 _ => "\e[1;38;5;231;48;5;238m"
             };
@@ -255,6 +261,7 @@ public sealed class FretboardRenderer
                 "3" => HighlightThird,
                 "b3" => HighlightThird,
                 "5" => HighlightFifth,
+                "b5" => HighlightFifth,
                 _ => HighlightOther
             };
         }
@@ -264,17 +271,25 @@ public sealed class FretboardRenderer
         "R" => Root,
         "1" => Pentatonic,
         "2" => Pentatonic,
+        "9" => Pentatonic,
         "b2" => Pentatonic,
+        "b9" => Pentatonic,
         "3" => Third,
         "b3" => Third,
+        "#9" => Third,
         "4" => Pentatonic,
+        "11" => Pentatonic,
         "#4" => BlueNote,
+        "#11" => BlueNote,
         "b5" => BlueNote,
         "5" => Fifth,
         "6" => Pentatonic,
+        "13" => Pentatonic,
         "b6" => Pentatonic,
+        "b13" => Pentatonic,
         "7" => Pentatonic,
         "b7" => Pentatonic,
+        "bb7" => Pentatonic,
         "X" => Muted,
         _ => Reset
     };

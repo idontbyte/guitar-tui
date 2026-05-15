@@ -33,6 +33,8 @@ Guitar TUI opens with these areas:
 - `Tuner`: play reference notes for the guitar strings or a custom note.
 - `Cowboy chords`: view open-position chord diagrams and song-mode practice.
 - `Triads`: study triad inversions or run triad music games.
+- `Jazz chords`: follow a fundamentals path, practise guide tones / shell voicings / full voicings, drill ii-V-I changes, or apply chords to jazz standards.
+- `Arpeggios`: learn chord tones one note at a time, practise targeting them in solos, follow song changes, and print practice sheets.
 - `Scales`: view scale shapes, practise songs against scale positions, or ask the app for song-library scale suggestions.
 - `Intervals`: look up interval functions on the fretboard or practise interval targeting over songs.
 
@@ -84,6 +86,52 @@ Useful in-game controls include:
 - `V`: mute or unmute voice prompts where supported.
 - `T`: toggle between the full phrase rows and the rolling current-plus-next-3 view.
 - `N`: jump to the next chord.
+- `B` / `Q`: return to the main menu.
+
+### Jazz Chords
+
+- Teaches jazz fundamentals through a guided path: seventh chord formulas, guide-tone ii-V-I, shell voicing ii-V-I, minor ii-V-i, and standards practice.
+- Shows a chord type reference for common jazz colors: `maj7`, `6`, `6/9`, `m7`, `m9`, `7`, `9`, `13`, `7b9`, `7#9`, `m7b5`, and `dim7`.
+- Offers three voicing modes:
+  - guide tones: the essential `3`/`7` color tones,
+  - shell voicings: compact root-plus-guide-tone grips,
+  - full voicings: four-note chord colors with extensions.
+- Includes a dedicated ii-V-I trainer for major and minor keys.
+- Shows guide-tone summaries and next-chord movement while music games run.
+- Tags jazz song presets with the concepts they teach, such as minor ii-V-i, turnarounds, circle movement, and rhythm changes.
+
+Useful jazz-game controls include:
+
+- `Space`: pause or resume.
+- `-` / `+`: decrease or increase tempo.
+- `V`: cycle guide tones, shell voicings, and full voicings.
+- `M`: mute or unmute the click.
+- `S`: mute or unmute backing chords.
+- `L`: cycle note labels between intervals, frets, and markers.
+- `N`: jump to the next chord.
+- `B` / `Q`: return to the main menu.
+
+### Arpeggios
+
+- Explains that an arpeggio is a chord played one note at a time.
+- Connects arpeggios to soloing, chord-tone targeting, rhythm picking, and jazz guide-tone practice.
+- Includes shape references for major, minor, major 7, dominant 7, minor 7, minor 7 flat 5, and diminished 7 arpeggios.
+- Provides a "Find the chord tone" game for hearing a chord, then finding target roots, 3rds, 5ths, and 7ths.
+- Includes a song-changes arpeggio game where the displayed arpeggio follows the current chord.
+- Includes rhythm arpeggio pattern guidance for broken-chord accompaniment and fingerpicking.
+- Can open printable arpeggio sheets for a chosen root and chord type.
+
+Useful arpeggio-game controls include:
+
+- `Space`: pause or resume.
+- `-` / `+`: decrease or increase tempo.
+- `T`: toggle full/target-tone view in the song game; play the target note in the targeting game.
+- `C`: replay the current chord in the targeting game.
+- `R`: reveal or hide the target tone in the targeting game.
+- `N`: jump to the next chord or prompt.
+- `M`: mute or unmute the click.
+- `S`: mute or unmute backing chords.
+- `L`: cycle note labels between intervals, frets, and markers.
 - `B` / `Q`: return to the main menu.
 
 ### Scales
