@@ -22,9 +22,11 @@ public sealed class FretboardRenderer
     private const string HighlightThird = "\e[1;38;5;16;48;5;220m";
     private const string HighlightFifth = "\e[1;38;5;16;48;5;39m";
     private const string HighlightOther = "\e[1;38;5;16;48;5;231m";
-    private const string HighlightEmpty = "\e[38;5;236;48;5;235m";
+    private const string HighlightStringLine = "\e[38;5;16;48;5;250m";
 
     private static readonly Regex AnsiPattern = new(@"\e\[[0-9;]*m", RegexOptions.Compiled);
+
+    public NoteLabelMode NoteLabelMode { get; set; } = NoteLabelMode.IntervalNames;
 
     public IReadOnlyList<string> Render(FretboardDiagram diagram, bool highlighted = false)
     {
@@ -44,7 +46,7 @@ public sealed class FretboardRenderer
 
         for (var stringIndex = 0; stringIndex < diagram.Strings.Count; stringIndex++)
         {
-            lines.Add(RenderString(diagram, stringIndex, markers, highlighted));
+            lines.Add(RenderString(diagram, stringIndex, markers, highlighted, NoteLabelMode));
         }
 
         return lines;
@@ -181,7 +183,8 @@ public sealed class FretboardRenderer
         FretboardDiagram diagram,
         int stringIndex,
         IReadOnlyDictionary<(int StringIndex, int Fret), FretPosition> markers,
-        bool highlighted)
+        bool highlighted,
+        NoteLabelMode noteLabelMode)
     {
         var builder = new StringBuilder();
         builder.Append(Color(diagram.Strings[stringIndex].PadLeft(2), StringName));
@@ -191,23 +194,32 @@ public sealed class FretboardRenderer
         {
             if (markers.TryGetValue((stringIndex, fret), out var position))
             {
-                var label = position.IsMuted ? "X" : position.Label;
+                var label = position.IsMuted ? "X" : DisplayLabelFor(position, noteLabelMode);
+                var colorLabel = position.IsMuted ? "X" : position.Label;
                 var displayLabel = DisplayLabel(label);
                 var paddedLabel = displayLabel.Length > 3 ? displayLabel[..3] : displayLabel.PadLeft(3).PadRight(4);
-                builder.Append(Color(paddedLabel, ColorFor(label, highlighted, fret == 0)));
+                builder.Append(Color(paddedLabel, ColorFor(colorLabel, highlighted, fret == 0)));
             }
             else
             {
-                builder.Append(Color("----", fret == 0 ? NutColumn : highlighted ? HighlightEmpty : Dim));
+                builder.Append(Color("----", fret == 0 ? NutColumn : highlighted ? HighlightStringLine : Dim));
             }
 
-            builder.Append(Color("|", fret == 0 ? NutColumn : Dim));
+            builder.Append(Color("|", fret == 0 ? NutColumn : highlighted ? HighlightStringLine : Dim));
         }
 
         return builder.ToString();
     }
 
     private static string Color(string value, string color) => $"{color}{value}{Reset}";
+
+    private static string DisplayLabelFor(FretPosition position, NoteLabelMode noteLabelMode) => noteLabelMode switch
+    {
+        NoteLabelMode.IntervalNames => position.Label,
+        NoteLabelMode.FretNumbers => position.Fret.ToString(),
+        NoteLabelMode.Markers => "X",
+        _ => position.Label
+    };
 
     private static string DisplayLabel(string label) => label switch
     {

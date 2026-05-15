@@ -6,11 +6,46 @@ using GuitarResourcesTui.Triads;
 using GuitarResourcesTui.Tui;
 
 new TriadInversionTests().RunAll();
+new FretboardRendererTests().RunAll();
 new TriadProgressionGameTests().RunAll();
 new BackingSynthTests().RunAll();
 new PentatonicShapeTests().RunAll();
 new IntervalFunctionMapTests().RunAll();
 Console.WriteLine("All tests passed.");
+
+internal sealed class FretboardRendererTests
+{
+    public void RunAll()
+    {
+        var renderer = new FretboardRenderer();
+        var diagram = new FretboardDiagram(
+            ["E"],
+            StartFret: 1,
+            Length: 2,
+            [new FretPosition(0, 1, "R")]);
+
+        var highlighted = renderer.Render(diagram, highlighted: true);
+
+        TestAssert.True(
+            highlighted.Any(line => line.Contains("\e[38;5;16;48;5;250m----", StringComparison.Ordinal)),
+            "highlighted empty frets keep dark string lines against the light background");
+        TestAssert.True(
+            highlighted.Any(line => line.Contains("\e[38;5;16;48;5;250m|", StringComparison.Ordinal)),
+            "highlighted fret separators keep dark contrast against the light background");
+
+        renderer.NoteLabelMode = NoteLabelMode.FretNumbers;
+        var fretNumberLines = renderer.Render(diagram);
+        TestAssert.True(
+            fretNumberLines.Any(line => line.Contains("\e[1;38;5;46m  1 ", StringComparison.Ordinal)),
+            "fret-number note labels keep the interval color");
+
+        renderer.NoteLabelMode = NoteLabelMode.Markers;
+        var markerLines = renderer.Render(diagram);
+        TestAssert.True(
+            markerLines.Any(line => line.Contains("\e[1;38;5;46m  X ", StringComparison.Ordinal)),
+            "marker note labels keep the interval color");
+    }
+}
 
 internal sealed class TriadInversionTests
 {
