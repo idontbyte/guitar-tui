@@ -201,7 +201,8 @@ public sealed class TriadProgressionGameLibrary(
 
     public IReadOnlyList<TriadPracticeItem> BuildPhrase(
         IReadOnlyList<ChordSymbol> progression,
-        TriadPracticeItem? previousItem = null)
+        TriadPracticeItem? previousItem = null,
+        TriadInversionFilter inversionFilter = TriadInversionFilter.All)
     {
         if (progression.Count == 0)
         {
@@ -213,7 +214,7 @@ public sealed class TriadProgressionGameLibrary(
 
         foreach (var chord in progression)
         {
-            var candidates = GetCandidates(chord).ToArray();
+            var candidates = GetCandidates(chord, inversionFilter).ToArray();
             var item = PickNear(candidates, anchorFret);
             phrase.Add(item);
             anchorFret = item.CenterFret;
@@ -222,11 +223,12 @@ public sealed class TriadProgressionGameLibrary(
         return phrase;
     }
 
-    private IEnumerable<TriadPracticeItem> GetCandidates(ChordSymbol chord)
+    private IEnumerable<TriadPracticeItem> GetCandidates(ChordSymbol chord, TriadInversionFilter inversionFilter)
     {
         return triads
             .GetTriadShapes(chord.Root, chord.Quality, voicingKind)
-            .SelectMany(grouping => grouping.Shapes.Select(shape => new TriadPracticeItem(chord, grouping.Name, shape)));
+            .SelectMany(grouping => grouping.Shapes.Select(shape => new TriadPracticeItem(chord, grouping.Name, shape)))
+            .Where(item => inversionFilter.BassFunction() is null || item.Shape.BassFunction == inversionFilter.BassFunction());
     }
 
     private TriadPracticeItem PickNear(IReadOnlyList<TriadPracticeItem> candidates, double? anchorFret)
@@ -316,6 +318,42 @@ public enum TriadVoicingKind
 {
     Close,
     Spread
+}
+
+public enum TriadInversionFilter
+{
+    All,
+    RootPosition,
+    FirstInversion,
+    SecondInversion
+}
+
+public static class TriadInversionFilterExtensions
+{
+    public static string DisplayName(this TriadInversionFilter filter) => filter switch
+    {
+        TriadInversionFilter.All => "all",
+        TriadInversionFilter.RootPosition => "root only",
+        TriadInversionFilter.FirstInversion => "1st only",
+        TriadInversionFilter.SecondInversion => "2nd only",
+        _ => filter.ToString()
+    };
+
+    public static string? BassFunction(this TriadInversionFilter filter) => filter switch
+    {
+        TriadInversionFilter.RootPosition => "R",
+        TriadInversionFilter.FirstInversion => "3",
+        TriadInversionFilter.SecondInversion => "5",
+        _ => null
+    };
+
+    public static TriadInversionFilter Next(this TriadInversionFilter filter) => filter switch
+    {
+        TriadInversionFilter.All => TriadInversionFilter.RootPosition,
+        TriadInversionFilter.RootPosition => TriadInversionFilter.FirstInversion,
+        TriadInversionFilter.FirstInversion => TriadInversionFilter.SecondInversion,
+        _ => TriadInversionFilter.All
+    };
 }
 
 public static class TriadVoicingExtensions

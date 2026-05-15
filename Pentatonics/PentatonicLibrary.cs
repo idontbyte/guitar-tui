@@ -225,7 +225,9 @@ public sealed class PentatonicLibrary
         var rootPitch = MusicTheory.PitchClassFor(root);
         var scale = Scales[kind];
         var labelsByPitchClass = scale.Intervals
-            .ToDictionary(interval => MusicTheory.Normalize(rootPitch + interval.Semitones), interval => interval.Label);
+            .ToDictionary(
+                interval => MusicTheory.Normalize(rootPitch + interval.Semitones),
+                interval => currentChord is null || interval.Label != "R" ? interval.Label : "1");
         var chordLabelsByPitchClass = currentChord is null
             ? new Dictionary<int, string>()
             : MusicTheory.BuildTriad(currentChord.Root, currentChord.Quality)

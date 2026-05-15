@@ -1,6 +1,6 @@
 # Guitar TUI
 
-Guitar TUI is a terminal-based guitar practice tool for learning fretboard shapes, chord functions, song progressions, and timing. It combines reference diagrams with interactive music games, click/backing playback, and optional spoken chord prompts.
+Guitar TUI is a terminal-based guitar practice tool for learning fretboard shapes, chord functions, song progressions, and timing. It combines reference diagrams with interactive music games, click/backing playback, printable sheets, and optional spoken chord prompts.
 
 ## Install
 
@@ -38,6 +38,8 @@ Guitar TUI opens with these areas:
 
 Most screens support `B` for back and `Q` for the main menu. Music games also show their active controls in the header while they run.
 
+The shared fretboard renderer always shows all six strings and keeps the nut / fret 0 column visually distinct.
+
 ## Features
 
 ### Tuner
@@ -58,19 +60,25 @@ Most screens support `B` for back and `Q` for the main menu. Music games also sh
 - Supports spread triad practice.
 - Labels root, third, and fifth positions directly on the fretboard.
 - Marks common lower-position shapes.
+- Includes sharp and flat root choices through the chromatic root menu.
+- Can open a printable triad inversion sheet from the triad reference screen.
 
 ### Triad Music Games
 
 - Build practice phrases from simple mode, custom progressions, or the song library.
 - Highlight the current triad while showing upcoming shapes.
-- Control tempo and playback while practising.
+- Control tempo and playback while practising with a built-in metronome.
 - Supports click, backing chords, and optional spoken chord prompts.
 - Includes both close-voiced triad and spread-triad game modes.
+- Chooses nearby inversions so progressions can be practised as connected fretboard movement.
+- Can filter the game to root position only, first inversion only, or second inversion only.
+- Offers a full phrase view and a rolling current-plus-next view.
 
 Useful in-game controls include:
 
 - `Space`: pause or resume.
 - `-` / `+`: decrease or increase tempo.
+- `I`: cycle the triad inversion filter.
 - `M`: mute or unmute the click.
 - `S`: mute or unmute backing chords.
 - `V`: mute or unmute voice prompts where supported.
@@ -84,6 +92,7 @@ Useful in-game controls include:
 - Also includes major scale, natural minor, major-scale modes, harmonic minor, and melodic minor shapes.
 - Supports song games where the current chord function is shown while you practise scale-based improvisation.
 - Includes a song-library scale suggester that picks a best-fit key and scale for a selected song.
+- In scale song modes, `R`, `3` / `b3`, and `5` mark the current chord tones; `1` marks the root of the suggested scale.
 
 ### Intervals
 
@@ -102,7 +111,17 @@ Am, C, G, D
 
 Use `m` for minor chords. Flat roots are accepted and normalized internally, so `Bb` is understood.
 
-The app also includes a built-in song library with numbered presets for quick practice.
+The app also includes a built-in song library with numbered presets for quick practice. Song selection accepts the preset number, a copied menu line, or a song title.
+
+## Audio
+
+Music games can play:
+
+- a click/metronome,
+- a simple synthesized backing chord that follows the current progression,
+- optional spoken chord prompts in supported modes.
+
+Use `M`, `S`, and `V` in-game to mute or unmute those layers when available.
 
 ## Development
 
@@ -113,6 +132,16 @@ Run the full test harness with:
 ```bash
 dotnet run --project Tests/GuitarResourcesTui.Tests/GuitarResourcesTui.Tests.csproj
 ```
+
+### Source Layout
+
+- `Tui/App.cs`: main menu flow and shared TUI helpers.
+- `Tui/App.Audio.cs`: click, backing synth, tuner tone playback, and voice prompts.
+- `Tui/App.CowboyChords.cs`: cowboy chord reference and song mode.
+- `Tui/App.Tuner.cs`: tuner screens and note parsing.
+- `Tui/App.Models.cs`: app-local records and enums.
+- `Tui/Printing/`: printable HTML sheet generation.
+- `Triads/`, `Pentatonics/`, `IntervalMaps/`, and `Fretboards/`: core music and rendering libraries.
 
 ### Build The Windows Installer
 

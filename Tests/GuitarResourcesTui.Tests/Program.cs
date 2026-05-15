@@ -206,6 +206,13 @@ internal sealed class TriadProgressionGameTests
         var nextPhrase = game.BuildPhrase(progression, phrase[^1]);
         AssertEqual(progression.Count, nextPhrase.Count, "next phrase has one triad per chord");
         Assert(Math.Abs(nextPhrase[0].CenterFret - phrase[^1].CenterFret) <= 6, "next phrase starts near previous phrase");
+        AssertFilteredPhrase(game, progression, TriadInversionFilter.RootPosition, "R");
+        AssertFilteredPhrase(game, progression, TriadInversionFilter.FirstInversion, "3");
+        AssertFilteredPhrase(game, progression, TriadInversionFilter.SecondInversion, "5");
+        AssertEqual(TriadInversionFilter.RootPosition, TriadInversionFilter.All.Next(), "inversion filter cycles from all to root");
+        AssertEqual(TriadInversionFilter.FirstInversion, TriadInversionFilter.RootPosition.Next(), "inversion filter cycles from root to first inversion");
+        AssertEqual(TriadInversionFilter.SecondInversion, TriadInversionFilter.FirstInversion.Next(), "inversion filter cycles from first to second inversion");
+        AssertEqual(TriadInversionFilter.All, TriadInversionFilter.SecondInversion.Next(), "inversion filter cycles back to all");
 
         AssertEqual(100, TriadProgressionGameLibrary.PresetProgressions.Count, "game has 100 preset progressions");
         foreach (var preset in TriadProgressionGameLibrary.PresetProgressions)
@@ -217,6 +224,17 @@ internal sealed class TriadProgressionGameTests
             Assert(preset.Bpm >= 30 && preset.Bpm <= 240, $"{preset.Name} BPM is playable");
             Assert(preset.TimeSignature.BeatsPerBar > 0, $"{preset.Name} has a meter");
         }
+        Assert(TryFindPreset(TriadProgressionGameLibrary.PresetProgressions, "089. Hey Joe - Jimi Hendrix: C G D A E", allowListPosition: false, out var heyJoe), "preset lookup accepts copied menu lines");
+        AssertEqual(89, heyJoe.Number, "copied Hey Joe menu line selects song 89");
+        Assert(TryFindPreset(TriadProgressionGameLibrary.PresetProgressions, "Hey Joe", allowListPosition: false, out heyJoe), "preset lookup accepts song titles");
+        AssertEqual(89, heyJoe.Number, "Hey Joe title selects song 89");
+        var cowboySongs = TriadProgressionGameLibrary.PresetProgressions
+            .Where(preset => preset.ProgressionText
+                .Split([',', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .All(chord => new[] { "A", "Am", "A7", "B7", "C", "C7", "D", "Dm", "D7", "E", "Em", "E7", "F", "G", "G7" }.Contains(chord)))
+            .ToArray();
+        Assert(TryFindPreset(cowboySongs, "15", allowListPosition: true, out var cowboySong), "filtered preset lookup accepts visible list positions");
+        AssertEqual(cowboySongs[14].Number, cowboySong.Number, "filtered list position 15 selects the 15th visible song");
 
         AssertSequenceEqual([4, 2, 2, 8], game.ParseChordLengths("4 2 2 8", 4, 4), "custom chord lengths parse");
         AssertSequenceEqual([3, 3, 3, 3], game.ParseChordLengths("", 4, 3), "blank chord lengths use default");
@@ -269,6 +287,39 @@ internal sealed class TriadProgressionGameTests
         "5" => 2,
         _ => 99
     };
+
+    private static void AssertFilteredPhrase(
+        TriadProgressionGameLibrary game,
+        IReadOnlyList<ChordSymbol> progression,
+        TriadInversionFilter filter,
+        string expectedBassFunction)
+    {
+        var phrase = game.BuildPhrase(progression, inversionFilter: filter);
+        AssertEqual(progression.Count, phrase.Count, $"{filter} phrase has one triad per chord");
+
+        foreach (var item in phrase)
+        {
+            AssertEqual(expectedBassFunction, item.Shape.BassFunction, $"{item.Title} uses the requested inversion filter");
+        }
+    }
+
+    private static bool TryFindPreset(
+        IReadOnlyList<PresetChordProgression> presets,
+        string input,
+        bool allowListPosition,
+        out PresetChordProgression preset)
+    {
+        var method = typeof(App).GetMethod(
+            "TryFindPreset",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+            [typeof(IReadOnlyList<PresetChordProgression>), typeof(string), typeof(bool), typeof(PresetChordProgression).MakeByRefType()]);
+        Assert(method is not null, "TryFindPreset exists");
+
+        object?[] arguments = [presets, input, allowListPosition, null];
+        var found = (bool)method!.Invoke(null, arguments)!;
+        preset = (PresetChordProgression)arguments[3]!;
+        return found;
+    }
 
     private static string LowToHighFunctions(TriadPracticeItem item)
     {
@@ -457,6 +508,8 @@ internal sealed class PentatonicShapeTests
                 }
             }
         }
+
+        AssertScaleWindowSeparatesChordRootFromScaleRoot(library);
     }
 
     private static int ExpectedShapeCount(PentatonicScaleKind scaleKind) => scaleKind switch
@@ -508,6 +561,30 @@ internal sealed class PentatonicShapeTests
             TestAssert.Equal(expectedLabel, position.Label, $"{root} {scaleKind} shape {shape.Number} labels intervals correctly");
             TestAssert.True(position.Fret >= shape.Diagram.StartFret, $"{root} {scaleKind} shape {shape.Number} position starts inside diagram");
             TestAssert.True(position.Fret < shape.Diagram.StartFret + shape.Diagram.Length, $"{root} {scaleKind} shape {shape.Number} position ends inside diagram");
+        }
+    }
+
+    private static void AssertScaleWindowSeparatesChordRootFromScaleRoot(PentatonicLibrary library)
+    {
+        var diagram = library.BuildScaleWindow(
+            "B",
+            PentatonicScaleKind.NaturalMinor,
+            startFret: 0,
+            length: 13,
+            new ChordSymbol("A", ChordQuality.Major));
+
+        foreach (var position in diagram.Positions)
+        {
+            var pitch = MusicTheory.Normalize(OpenPitchByStringIndex[position.SourceStringIndex!.Value] + position.Fret);
+
+            if (pitch == MusicTheory.PitchClassFor("A"))
+            {
+                TestAssert.Equal("R", position.Label, "scale song overlay labels current chord roots as R");
+            }
+            else if (pitch == MusicTheory.PitchClassFor("B"))
+            {
+                TestAssert.Equal("1", position.Label, "scale song overlay labels scale roots as 1 when they are not current chord roots");
+            }
         }
     }
 }

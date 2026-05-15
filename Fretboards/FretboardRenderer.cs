@@ -262,6 +262,7 @@ public sealed class FretboardRenderer
         return label switch
     {
         "R" => Root,
+        "1" => Pentatonic,
         "2" => Pentatonic,
         "b2" => Pentatonic,
         "3" => Third,
