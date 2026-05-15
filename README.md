@@ -14,7 +14,7 @@ The Windows app is packaged as a self-contained executable, so you do not need t
 
 Download the macOS `.dmg`, open it, then drag `Guitar TUI` into `Applications`.
 
-On first launch, macOS may ask you to confirm that you want to open an app downloaded from the internet.
+On first launch, macOS may ask you to confirm that you want to open an app downloaded from the internet. The macOS app launches the TUI in Terminal.
 
 ## Run From Source
 
@@ -31,52 +31,39 @@ The project currently targets `net10.0`.
 Guitar TUI opens with these areas:
 
 - `Tuner`: play reference notes for the guitar strings or a custom note.
-- `Cowboy chords`: view open-position chord diagrams and song-mode practice.
-- `Triads`: study triad inversions or run triad music games.
-- `Jazz chords`: follow a fundamentals path, practise guide tones / shell voicings / full voicings, drill ii-V-I changes, or apply chords to jazz standards.
-- `Arpeggios`: learn chord tones one note at a time, practise targeting them in solos, follow song changes, and print practice sheets.
-- `Scales`: view scale shapes, practise songs against scale positions, or ask the app for song-library scale suggestions.
-- `Intervals`: look up interval functions on the fretboard or practise interval targeting over songs.
+- `Cowboy chords`: learn open-position chords and practise changing between them in songs.
+- `Triads`: study 3-note chord shapes and inversions across the fretboard.
+- `Jazz chords`: learn guide tones, shell voicings, ii-V-I movement, and jazz standards.
+- `Arpeggios`: learn chord tones one note at a time for soloing, rhythm, and song changes.
+- `Scales`: explore scale shapes and practise using them over chord progressions.
+- `Intervals`: see how notes relate to a root and practise targeting chord tones.
 
-Most screens support `B` for back and `Q` for the main menu. Music games also show their active controls in the header while they run.
+Most screens support `B` for back and `Q` for the main menu. Fretboard screens support `L` where shown to cycle note labels between interval names, fret numbers, and simple `X` markers.
 
-The shared fretboard renderer always shows all six strings and keeps the nut / fret 0 column visually distinct.
+The shared fretboard renderer shows six strings, keeps the nut / fret 0 column visually distinct, and colors roots, thirds, fifths, color tones, blue notes, and muted strings.
 
-## Features
+## Tuner
 
-### Tuner
-
-- Plays reference tones for standard guitar strings.
+- Plays standard guitar-string reference tones.
 - Supports custom note input such as `E2`, `C#3`, or `Bb3`.
-- Uses platform audio playback where available.
+- Shows the frequency of the note being played.
+- Includes a stop command for the currently playing reference tone.
 
-### Cowboy Chords
+## Cowboy Chords
 
-- Shows open-position chord references.
-- Includes song mode for practising chord changes in context.
-- Displays root, third, fifth, and muted-string labels with color coding.
+- `Chord reference`: shows common open-position chord diagrams with root, third, fifth, open-string, and muted-string labels.
+- `Song mode`: practises open-chord changes in real progressions with tempo, click, and backing chords.
 
-### Triads
+## Triads
 
-- Shows major and minor triad inversions across adjacent string groupings.
-- Supports spread triad practice.
-- Labels root, third, and fifth positions directly on the fretboard.
-- Marks common lower-position shapes.
+- `Inversions`: reference all major and minor triad inversions by adjacent string group.
+- `Music game`: practise connected close-voiced triad shapes through chord progressions.
+- `Spread triads music game`: practise wider skipped-string triad shapes.
 - Includes sharp and flat root choices through the chromatic root menu.
-- Can open a printable triad inversion sheet from the triad reference screen.
+- Marks common lower-position triad shapes.
+- Can open printable triad inversion sheets from the triad reference screen.
 
-### Triad Music Games
-
-- Build practice phrases from simple mode, custom progressions, or the song library.
-- Highlight the current triad while showing upcoming shapes.
-- Control tempo and playback while practising with a built-in metronome.
-- Supports click, backing chords, and optional spoken chord prompts.
-- Includes both close-voiced triad and spread-triad game modes.
-- Chooses nearby inversions so progressions can be practised as connected fretboard movement.
-- Can filter the game to root position only, first inversion only, or second inversion only.
-- Offers a full phrase view and a rolling current-plus-next view.
-
-Useful in-game controls include:
+Useful triad-game controls:
 
 - `Space`: pause or resume.
 - `-` / `+`: decrease or increase tempo.
@@ -84,70 +71,80 @@ Useful in-game controls include:
 - `M`: mute or unmute the click.
 - `S`: mute or unmute backing chords.
 - `V`: mute or unmute voice prompts where supported.
-- `T`: toggle between the full phrase rows and the rolling current-plus-next-3 view.
+- `T`: toggle between full phrase rows and the rolling current-plus-next-3 view.
+- `L`: cycle note-label mode.
 - `N`: jump to the next chord.
-- `B` / `Q`: return to the main menu.
 
-### Jazz Chords
+## Jazz Chords
 
-- Teaches jazz fundamentals through a guided path: seventh chord formulas, guide-tone ii-V-I, shell voicing ii-V-I, minor ii-V-i, and standards practice.
-- Shows a chord type reference for common jazz colors: `maj7`, `6`, `6/9`, `m7`, `m9`, `7`, `9`, `13`, `7b9`, `7#9`, `m7b5`, and `dim7`.
-- Offers three voicing modes:
-  - guide tones: the essential `3`/`7` color tones,
-  - shell voicings: compact root-plus-guide-tone grips,
-  - full voicings: four-note chord colors with extensions.
-- Includes a dedicated ii-V-I trainer for major and minor keys.
-- Shows guide-tone summaries and next-chord movement while music games run.
-- Tags jazz song presets with the concepts they teach, such as minor ii-V-i, turnarounds, circle movement, and rhythm changes.
+- `Fundamentals path`: a guided path through seventh chord formulas, guide tones, shell voicings, major ii-V-I, minor ii-V-i, and standards practice.
+- `Chord type list`: explains common jazz colors including `maj7`, `6`, `6/9`, `m7`, `m9`, `7`, `9`, `13`, `7b9`, `7#9`, `m7b5`, and `dim7`.
+- `Voicing reference`: shows playable guide-tone, shell, and full voicing shapes.
+- `ii-V-I trainer`: drills major or minor ii-V-I progressions in random or chosen keys.
+- `Song library`: applies jazz chord vocabulary to standards-style progressions with concept tags.
+- `Random arrangement game`: creates a fresh connected jazz progression to practise.
 
-Useful jazz-game controls include:
+Jazz games show the current chord, the next movement, guide-tone summaries, and upcoming voicings.
+
+Useful jazz controls:
 
 - `Space`: pause or resume.
 - `-` / `+`: decrease or increase tempo.
 - `V`: cycle guide tones, shell voicings, and full voicings.
 - `M`: mute or unmute the click.
 - `S`: mute or unmute backing chords.
-- `L`: cycle note labels between intervals, frets, and markers.
+- `L`: cycle note-label mode.
 - `N`: jump to the next chord.
-- `B` / `Q`: return to the main menu.
 
-### Arpeggios
+## Arpeggios
 
-- Explains that an arpeggio is a chord played one note at a time.
-- Connects arpeggios to soloing, chord-tone targeting, rhythm picking, and jazz guide-tone practice.
-- Includes shape references for major, minor, major 7, dominant 7, minor 7, minor 7 flat 5, and diminished 7 arpeggios.
-- Provides a "Find the chord tone" game for hearing a chord, then finding target roots, 3rds, 5ths, and 7ths.
-- Includes a song-changes arpeggio game where the displayed arpeggio follows the current chord.
-- Includes rhythm arpeggio pattern guidance for broken-chord accompaniment and fingerpicking.
-- Can open printable arpeggio sheets for a chosen root and chord type.
+- `What are arpeggios?`: explains chord tones, soloing targets, and broken-chord rhythm use.
+- `Shape reference`: shows movable arpeggio maps for triads and 7th chords.
+- `Find the chord tone`: plays a chord and asks you to find a target root, 3rd, 5th, or 7th.
+- `Song changes arpeggio game`: follows the current chord and switches arpeggio shapes as the harmony moves.
+- `Rhythm arpeggio patterns`: gives broken-chord picking patterns for rhythm parts.
+- `Printable sheets`: opens printable arpeggio maps for practice away from the app.
 
-Useful arpeggio-game controls include:
+Supported arpeggio qualities include major, minor, major 7, dominant 7, minor 7, minor 7 flat 5, and diminished 7.
 
-- `Space`: pause or resume.
-- `-` / `+`: decrease or increase tempo.
-- `T`: toggle full/target-tone view in the song game; play the target note in the targeting game.
+Useful arpeggio controls:
+
+- `Space`: pause or resume in song mode.
+- `-` / `+`: decrease or increase tempo in song mode.
+- `T`: toggle full/target-tone view in the song game, or play the target note in the targeting game.
 - `C`: replay the current chord in the targeting game.
 - `R`: reveal or hide the target tone in the targeting game.
-- `N`: jump to the next chord or prompt.
 - `M`: mute or unmute the click.
 - `S`: mute or unmute backing chords.
-- `L`: cycle note labels between intervals, frets, and markers.
-- `B` / `Q`: return to the main menu.
+- `L`: cycle note-label mode.
+- `N`: jump to the next chord or prompt.
 
-### Scales
+## Scales
 
-- Shows shapes for major pentatonic, minor pentatonic, major blues, and minor blues.
-- Also includes major scale, natural minor, major-scale modes, harmonic minor, and melodic minor shapes.
-- Supports song games where the current chord function is shown while you practise scale-based improvisation.
-- Includes a song-library scale suggester that picks a best-fit key and scale for a selected song.
-- In scale song modes, `R`, `3` / `b3`, and `5` mark the current chord tones; `1` marks the root of the suggested scale.
+- `Shapes`: shows movable fretboard positions for a chosen root and scale.
+- `Song game`: practises a chosen scale while chords move underneath.
+- `Song library scale suggester`: picks a best-fit key and scale for a selected song and shows alternate suggestions.
+- Scale song modes mark the current chord tones as `R`, `3` / `b3`, and `5`; `1` marks the root of the selected or suggested scale.
 
-### Intervals
+Scale references include major pentatonic, minor pentatonic, major blues, minor blues, major scale, natural minor, major-scale modes, harmonic minor, and melodic minor shapes.
 
-- Shows interval-function maps across fretboard windows.
-- Lets you choose the root and anchor fret.
-- Can show all intervals or a selected subset.
-- Includes song-game practice for targeting intervals and landing on chord tones.
+Useful scale controls:
+
+- `Space`: pause or resume in song modes.
+- `-` / `+`: decrease or increase tempo in song modes.
+- `T`: toggle major/minor on compatible shape screens.
+- `M`: mute or unmute the click.
+- `S`: mute or unmute backing chords.
+- `L`: cycle note-label mode.
+- `N`: jump to the next chord.
+
+## Intervals
+
+- `Lookup`: pick a root and see interval names across a fretboard window.
+- `Song game`: practise finding target intervals while chords change.
+- The interval lookup can show all intervals or a selected subset.
+- The anchor fret can be moved with `N` / `P` or the arrow keys.
+- Interval games display the target interval, its function name, the current chord, and the backing chord.
 
 ## Progressions And Songs
 
@@ -157,9 +154,21 @@ Progression entry accepts chords separated by spaces or commas:
 Am, C, G, D
 ```
 
-Use `m` for minor chords. Flat roots are accepted and normalized internally, so `Bb` is understood.
+For triad-oriented modes, use `m` for minor chords. Flat roots are accepted and normalized internally, so `Bb` is understood.
 
-The app also includes a built-in song library with numbered presets for quick practice. Song selection accepts the preset number, a copied menu line, or a song title.
+Jazz and arpeggio modes also accept 7th-chord-style symbols such as:
+
+```text
+Dm7 G7 Cmaj7
+```
+
+Many games let you choose:
+
+- `Simple mode`: the app creates a short progression.
+- `Custom mode`: type your own progression.
+- `Song select`: choose from the built-in song-style progression library.
+
+Song selection accepts the preset number, a copied menu line, or a song title. Chord-length prompts accept one length per chord, or a blank value to use the default length for every chord.
 
 ## Audio
 
@@ -169,7 +178,16 @@ Music games can play:
 - a simple synthesized backing chord that follows the current progression,
 - optional spoken chord prompts in supported modes.
 
-Use `M`, `S`, and `V` in-game to mute or unmute those layers when available.
+Use `M`, `S`, and `V` in-game to mute or unmute those layers when available. The tuner, arpeggio targeting game, and music games share the same local audio helpers.
+
+## Printable Sheets
+
+Printable sheets are generated as local HTML files and opened in the browser when the platform allows it.
+
+- Triad reference screens can print inversion sheets.
+- Arpeggio screens can print arpeggio maps for a chosen root and chord type.
+
+Use the browser print dialog to print or save the sheets as PDF.
 
 ## Development
 
@@ -183,13 +201,22 @@ dotnet run --project Tests/GuitarResourcesTui.Tests/GuitarResourcesTui.Tests.csp
 
 ### Source Layout
 
-- `Tui/App.cs`: main menu flow and shared TUI helpers.
+- `Program.cs`: app entry point.
+- `Tui/App.cs`: main menu, triads, scales, intervals, progression setup, and shared TUI helpers.
 - `Tui/App.Audio.cs`: click, backing synth, tuner tone playback, and voice prompts.
 - `Tui/App.CowboyChords.cs`: cowboy chord reference and song mode.
 - `Tui/App.Tuner.cs`: tuner screens and note parsing.
+- `Tui/App.JazzChords.cs`: jazz chord menus, voicing reference, ii-V-I trainer, standards library, and jazz games.
+- `Tui/App.Arpeggios.cs`: arpeggio lessons, shape references, targeting game, song game, rhythm patterns, and printable sheets.
 - `Tui/App.Models.cs`: app-local records and enums.
 - `Tui/Printing/`: printable HTML sheet generation.
-- `Triads/`, `Pentatonics/`, `IntervalMaps/`, and `Fretboards/`: core music and rendering libraries.
+- `Fretboards/`: fretboard diagrams, rendering, and note-label modes.
+- `Triads/`: music-theory helpers, triad inversions, and progression game phrase generation.
+- `Pentatonics/`: scale and mode shape libraries.
+- `IntervalMaps/`: interval-function fretboard maps.
+- `JazzChords/`: jazz chord qualities, voicings, progression presets, and teaching helpers.
+- `Arpeggios/`: arpeggio qualities, shapes, targeting prompts, and teaching helpers.
+- `Tests/GuitarResourcesTui.Tests/`: lightweight console test harness.
 
 ### Build The Windows Installer
 
@@ -206,3 +233,19 @@ artifacts/GuitarTUI-Setup-win-x64.exe
 ```
 
 The build script publishes the app as a self-contained single-file Windows executable, embeds it into the installer payload, and generates the installer icon.
+
+### Build The macOS App
+
+From macOS:
+
+```bash
+./packaging/macos/package-macos.sh
+```
+
+The script defaults to `osx-arm64`. Pass another runtime if needed:
+
+```bash
+./packaging/macos/package-macos.sh osx-x64
+```
+
+The generated `.app` and `.dmg` are written under `artifacts/macos/`.
