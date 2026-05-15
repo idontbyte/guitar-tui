@@ -33,6 +33,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
             WriteMenuOption("5", "Arpeggios", "Learn chord tones one note at a time for soloing, rhythm, and song changes.");
             WriteMenuOption("6", "Scales", "Explore scale shapes and practise using them over chord progressions.");
             WriteMenuOption("7", "Intervals", "See how notes relate to a root and practise targeting chord tones.");
+            WriteMenuOption("8", "Daily practice", "Build a guided session from the app's drills and track what needs review.");
             Console.WriteLine("0. Exit");
             Console.WriteLine();
             Console.Write("Choose an option > ");
@@ -59,6 +60,9 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
                     break;
                 case "7":
                     ShowIntervalsMenu();
+                    break;
+                case "8":
+                    ShowPracticeCoach();
                     break;
                 case "0":
                     return;
@@ -290,6 +294,11 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
             return;
         }
 
+        ShowTriadProgressionGame(gameTitle, game, setup);
+    }
+
+    private void ShowTriadProgressionGame(string gameTitle, TriadProgressionGameLibrary game, TriadProgressionSetup setup)
+    {
         IReadOnlyList<ChordSymbol> progression;
         try
         {
@@ -867,6 +876,11 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
             return;
         }
 
+        ShowIntervalSongGame(setup, targetIntervals: null, keyRoot: null);
+    }
+
+    private void ShowIntervalSongGame(TriadProgressionSetup setup, IReadOnlySet<string>? targetIntervals, string? keyRoot)
+    {
         IReadOnlyList<ChordSymbol> progression;
         try
         {
@@ -879,13 +893,13 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
             return;
         }
 
-        var targetIntervals = ReadIntervalSet("Intervals to practice, for example b3 3 5 b7, or blank for common");
+        targetIntervals ??= ReadIntervalSet("Intervals to practice, for example b3 3 5 b7, or blank for common");
         if (targetIntervals.Count == IntervalFunctionMapLibrary.IntervalLabels.Count)
         {
             targetIntervals = new HashSet<string>(["b3", "3", "4", "5", "6", "b7"]);
         }
 
-        var keyRoot = ReadKeyCenter(progression[0].Root);
+        keyRoot ??= ReadKeyCenter(progression[0].Root);
 
         var bpm = setup.Bpm ?? ReadInt("BPM", defaultValue: 80, min: 30, max: 240);
         var timeSignature = setup.TimeSignature ?? ReadTimeSignature();
@@ -1481,6 +1495,11 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
             return;
         }
 
+        ShowScaleSongGame(keyRoot, scaleKind, setup);
+    }
+
+    private void ShowScaleSongGame(string keyRoot, PentatonicScaleKind scaleKind, TriadProgressionSetup setup)
+    {
         IReadOnlyList<ChordSymbol> progression;
         try
         {

@@ -190,6 +190,11 @@ public sealed partial class App
             return;
         }
 
+        ShowArpeggioTargetingGame(setup);
+    }
+
+    private void ShowArpeggioTargetingGame(TriadProgressionSetup setup)
+    {
         IReadOnlyList<ArpeggioChordSymbol> progression;
         try
         {
@@ -285,6 +290,11 @@ public sealed partial class App
             return;
         }
 
+        ShowArpeggioSongGame(setup);
+    }
+
+    private void ShowArpeggioSongGame(TriadProgressionSetup setup)
+    {
         IReadOnlyList<ArpeggioChordSymbol> progression;
         try
         {

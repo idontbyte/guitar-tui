@@ -4,6 +4,7 @@ using GuitarResourcesTui.Fretboards;
 using GuitarResourcesTui.IntervalMaps;
 using GuitarResourcesTui.JazzChords;
 using GuitarResourcesTui.Pentatonics;
+using GuitarResourcesTui.Practice;
 using GuitarResourcesTui.Triads;
 using GuitarResourcesTui.Tui;
 
@@ -15,6 +16,7 @@ new PentatonicShapeTests().RunAll();
 new IntervalFunctionMapTests().RunAll();
 new JazzChordLibraryTests().RunAll();
 new ArpeggioLibraryTests().RunAll();
+new PracticeCoachPlannerTests().RunAll();
 Console.WriteLine("All tests passed.");
 
 internal sealed class FretboardRendererTests
@@ -850,6 +852,53 @@ internal sealed class ArpeggioLibraryTests
         TestAssert.Equal("Am", ArpeggioLibrary.FromTriadChord(triadChord).DisplayName, "triad chord maps to matching arpeggio");
         TestAssert.SequenceEqual([4, 2, 2, 8], library.ParseChordLengths("4 2 2 8", 4, 4), "arpeggio chord lengths parse");
         TestAssert.SequenceEqual([3, 3, 3, 3], library.ParseChordLengths("", 4, 3), "blank arpeggio chord lengths use default");
+    }
+}
+
+internal sealed class PracticeCoachPlannerTests
+{
+    public void RunAll()
+    {
+        var emptyLog = new PracticeSessionLog();
+        var plan = PracticeCoachPlanner.BuildPlan(
+            new PracticeSessionRequest(10, PracticeFocus.Mixed),
+            emptyLog,
+            new DateOnly(2026, 5, 15));
+
+        TestAssert.Equal(10, plan.DurationMinutes, "practice planner keeps requested duration");
+        TestAssert.Equal(4, plan.Blocks.Count, "10-minute practice sessions have four blocks");
+        TestAssert.Equal(PracticeBlockKind.Tuner, plan.Blocks[0].Kind, "practice sessions start with tuning");
+        TestAssert.Equal(10, plan.Blocks.Sum(block => block.Minutes), "practice block minutes add up to the session length");
+        TestAssert.True(plan.Blocks.Select(block => block.Id).Distinct().Count() == plan.Blocks.Count, "practice planner does not duplicate blocks in a session");
+
+        var jazzPlan = PracticeCoachPlanner.BuildPlan(
+            new PracticeSessionRequest(20, PracticeFocus.Jazz),
+            emptyLog,
+            new DateOnly(2026, 5, 15));
+        TestAssert.True(jazzPlan.Blocks.Any(block => block.Kind is PracticeBlockKind.JazzGuideTones or PracticeBlockKind.JazzShellVoicings), "jazz practice includes jazz chord work");
+        TestAssert.True(jazzPlan.Blocks.Any(block => block.Kind is PracticeBlockKind.ArpeggioTargeting or PracticeBlockKind.ArpeggioSong or PracticeBlockKind.IntervalTargets), "jazz practice includes note-targeting work");
+
+        var log = new PracticeSessionLog
+        {
+            Entries =
+            [
+                new PracticeSessionEntry(
+                    new DateTimeOffset(2026, 5, 14, 10, 0, 0, TimeSpan.Zero),
+                    10,
+                    PracticeFocus.Mixed,
+                    [
+                        new PracticeBlockResult("interval-targets", PracticeBlockKind.IntervalTargets, "Intervals", "Target intervals", 3, PracticeDifficulty.Hard),
+                        new PracticeBlockResult("triad-connected", PracticeBlockKind.TriadMovement, "Triads", "Connected triad movement", 3, PracticeDifficulty.Easy)
+                    ])
+            ]
+        };
+
+        var biasedPlan = PracticeCoachPlanner.BuildPlan(
+            new PracticeSessionRequest(10, PracticeFocus.Mixed),
+            log,
+            new DateOnly(2026, 5, 15));
+        TestAssert.True(biasedPlan.Blocks.Any(block => block.Id == "interval-targets"), "hard blocks are rotated back into later practice");
+        TestAssert.SequenceEqual(["Intervals"], PracticeCoachPlanner.HardAreas(log), "hard areas summarize review bias");
     }
 }
 
