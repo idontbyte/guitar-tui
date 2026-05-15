@@ -186,6 +186,9 @@ public sealed partial class App
             case PracticeBlockKind.IntervalTargets:
                 ShowIntervalSongGame(setup, new HashSet<string>(["b3", "3", "5", "b7"]), block.KeyRoot);
                 break;
+            case PracticeBlockKind.ShredSpeed:
+                ShowDailyShredWorkout();
+                break;
         }
     }
 
@@ -262,7 +265,8 @@ public sealed partial class App
             PracticeFocus.Triads,
             PracticeFocus.Jazz,
             PracticeFocus.Soloing,
-            PracticeFocus.Rhythm
+            PracticeFocus.Rhythm,
+            PracticeFocus.Shredding
         };
 
         while (true)
@@ -455,6 +459,7 @@ public sealed partial class App
         PracticeFocus.Jazz => "jazz",
         PracticeFocus.Soloing => "soloing",
         PracticeFocus.Rhythm => "rhythm",
+        PracticeFocus.Shredding => "shredding",
         _ => focus.ToString()
     };
 

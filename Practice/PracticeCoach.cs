@@ -7,7 +7,8 @@ public enum PracticeFocus
     Triads,
     Jazz,
     Soloing,
-    Rhythm
+    Rhythm,
+    Shredding
 }
 
 public enum PracticeDifficulty
@@ -30,7 +31,8 @@ public enum PracticeBlockKind
     ArpeggioSong,
     RhythmArpeggios,
     ScaleSong,
-    IntervalTargets
+    IntervalTargets,
+    ShredSpeed
 }
 
 public sealed record PracticeSessionRequest(
@@ -86,7 +88,7 @@ public static class PracticeCoachPlanner
         "E A D G",
         "C",
         "Major scale",
-        FocusSet(PracticeFocus.Mixed, PracticeFocus.Beginner, PracticeFocus.Rhythm, PracticeFocus.Triads, PracticeFocus.Soloing, PracticeFocus.Jazz));
+        FocusSet(PracticeFocus.Mixed, PracticeFocus.Beginner, PracticeFocus.Rhythm, PracticeFocus.Triads, PracticeFocus.Soloing, PracticeFocus.Jazz, PracticeFocus.Shredding));
 
     private static readonly IReadOnlyList<PracticeBlockTemplate> Templates =
     [
@@ -189,6 +191,17 @@ public static class PracticeCoachPlanner
             "C",
             "Major pentatonic",
             FocusSet(PracticeFocus.Mixed, PracticeFocus.Beginner, PracticeFocus.Soloing)),
+        new(
+            "shred-speed",
+            PracticeBlockKind.ShredSpeed,
+            "Shredding",
+            "Clean speed builder",
+            "Build speed with honest clean reps instead of tense guessing.",
+            "Use the click, mark clean only when the drill is relaxed, and drop tempo the moment it gets tense.",
+            "1-2-3-4",
+            "C",
+            "Major scale",
+            FocusSet(PracticeFocus.Mixed, PracticeFocus.Soloing, PracticeFocus.Rhythm, PracticeFocus.Shredding)),
         new(
             "interval-targets",
             PracticeBlockKind.IntervalTargets,

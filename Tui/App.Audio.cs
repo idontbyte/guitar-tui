@@ -9,6 +9,9 @@ namespace GuitarResourcesTui.Tui;
 
 public sealed partial class App
 {
+    private static readonly List<AudioPlayback> ClickPlaybacks = [];
+    private static readonly object ClickPlaybackLock = new();
+
     private static void Click(bool accent)
     {
         if (Console.IsOutputRedirected)
@@ -18,13 +21,27 @@ public sealed partial class App
 
         try
         {
+            lock (ClickPlaybackLock)
+            {
+                CleanupFinishedProcesses(ClickPlaybacks);
+                var playback = PlayAudioFile(EnsureMetronomeClickFile(accent));
+                if (playback is not null)
+                {
+                    ClickPlaybacks.Add(playback);
+                    return;
+                }
+            }
+        }
+        catch
+        {
+            // Fall through to the simplest platform beep.
+        }
+
+        try
+        {
             if (OperatingSystem.IsWindows())
             {
-                Console.Beep(accent ? 1200 : 900, 25);
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                PlayMacClick(accent);
+                Console.Beep(accent ? 1568 : 1175, 18);
             }
             else
             {
@@ -102,6 +119,59 @@ public sealed partial class App
     {
         var path = EnsureTunerNoteFile(note);
         return PlayAudioFile(path);
+    }
+
+    private static string EnsureMetronomeClickFile(bool accent)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "guitar-tui-click");
+        Directory.CreateDirectory(directory);
+
+        var path = Path.Combine(directory, accent ? "accent-v2.wav" : "plain-v2.wav");
+        if (!File.Exists(path))
+        {
+            WriteMetronomeClickWav(path, accent);
+        }
+
+        return path;
+    }
+
+    private static void WriteMetronomeClickWav(string path, bool accent)
+    {
+        const int sampleRate = 44100;
+        const short channels = 1;
+        const short bitsPerSample = 16;
+        const double durationSeconds = 0.045d;
+        var samples = (int)(sampleRate * durationSeconds);
+        var dataSize = samples * channels * bitsPerSample / 8;
+        var frequency = accent ? 1760d : 1175d;
+
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream, Encoding.ASCII);
+
+        writer.Write(Encoding.ASCII.GetBytes("RIFF"));
+        writer.Write(36 + dataSize);
+        writer.Write(Encoding.ASCII.GetBytes("WAVE"));
+        writer.Write(Encoding.ASCII.GetBytes("fmt "));
+        writer.Write(16);
+        writer.Write((short)1);
+        writer.Write(channels);
+        writer.Write(sampleRate);
+        writer.Write(sampleRate * channels * bitsPerSample / 8);
+        writer.Write((short)(channels * bitsPerSample / 8));
+        writer.Write(bitsPerSample);
+        writer.Write(Encoding.ASCII.GetBytes("data"));
+        writer.Write(dataSize);
+
+        for (var sample = 0; sample < samples; sample++)
+        {
+            var time = sample / (double)sampleRate;
+            var attack = Math.Min(1d, time / 0.0015d);
+            var envelope = attack * Math.Exp(-time * 95d);
+            var tone = Math.Sin(2d * Math.PI * frequency * time)
+                + 0.22d * Math.Sin(2d * Math.PI * frequency * 2.01d * time);
+            var value = Math.Tanh(tone * 1.2d) * envelope * (accent ? 0.78d : 0.62d);
+            writer.Write((short)(value * short.MaxValue));
+        }
     }
 
     private static string EnsureTunerNoteFile(TunerNote note)

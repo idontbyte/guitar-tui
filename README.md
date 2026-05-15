@@ -37,6 +37,7 @@ Guitar TUI opens with these areas:
 - `Arpeggios`: learn chord tones one note at a time for soloing, rhythm, and song changes.
 - `Scales`: explore scale shapes and practise using them over chord progressions.
 - `Intervals`: see how notes relate to a root and practise targeting chord tones.
+- `Shredding`: build clean speed with finger drills, picking work, scale sequences, and tempo tracking.
 - `Daily practice`: build a guided practice session from the app's drills and track what needs review.
 
 Most screens support `B` for back and `Q` for the main menu. Fretboard screens support `L` where shown to cycle note labels between interval names, fret numbers, and simple `X` markers.
@@ -47,13 +48,36 @@ The shared fretboard renderer shows six strings, keeps the nut / fret 0 column v
 
 - Builds guided sessions from the app's existing drills.
 - Supports `5`, `10`, `20`, and `30` minute sessions.
-- Offers focus modes for mixed practice, beginner work, triads, jazz, soloing, and rhythm.
-- Starts each session with tuning, then rotates through focused fretboard, harmony, rhythm, scale, interval, jazz, or arpeggio blocks.
+- Offers focus modes for mixed practice, beginner work, triads, jazz, soloing, rhythm, and shredding.
+- Starts each session with tuning, then rotates through focused fretboard, harmony, rhythm, scale, interval, jazz, arpeggio, or shredding blocks.
 - Opens the matching drill for each block, then lets you mark it as easy, okay, hard, or skipped.
 - Saves a local practice log and biases future sessions toward hard or skipped areas.
 - Shows recent practice history and the areas most due for review.
 
 The practice log is stored under the user's application data folder as `GuitarTUI/practice-log.json`.
+
+## Shredding
+
+- Teaches clean speed as a technique skill: relaxed hands, small motion, muting, timing, and even tone.
+- Includes a technique path that orders the work from chromatic independence through picking, synchronization, scale sequencing, legato, and bursts.
+- Provides finger-independence drills such as `1-2-3-4`, `1-3-2-4`, and spider-style permutations.
+- Provides picking drills for one-string alternate picking, inside picking, and outside picking.
+- Provides synchronization drills for common three-note shapes like `1-2-4` and `1-3-4`.
+- Provides scale-sequence and burst drills for musical speed building.
+- Renders each exercise as tab plus finger numbers and pick strokes.
+- Includes a speed builder with click, clean-rep tracking, automatic tempo increases, and tempo drops for messy or tense attempts.
+- Saves a local shred log and uses it to choose a daily shred workout.
+
+Useful speed-builder controls:
+
+- `C`: mark a clean rep.
+- `M`: mark a messy rep and drop tempo.
+- `T`: mark a tense rep and drop tempo further.
+- `Space`: mute or unmute the click.
+- `-` / `+`: adjust tempo manually.
+- `Left` / `Right`: move the drill position on the neck.
+
+The shred log is stored under the user's application data folder as `GuitarTUI/shred-log.json`.
 
 ## Tuner
 
@@ -222,9 +246,11 @@ dotnet run --project Tests/GuitarResourcesTui.Tests/GuitarResourcesTui.Tests.csp
 - `Tui/App.JazzChords.cs`: jazz chord menus, voicing reference, ii-V-I trainer, standards library, and jazz games.
 - `Tui/App.Arpeggios.cs`: arpeggio lessons, shape references, targeting game, song game, rhythm patterns, and printable sheets.
 - `Tui/App.PracticeCoach.cs`: daily practice session UI, local history, and drill launching.
+- `Tui/App.Shredding.cs`: shredding menu, drill reference screens, speed builder, and daily shred workout.
 - `Tui/App.Models.cs`: app-local records and enums.
 - `Tui/Printing/`: printable HTML sheet generation.
 - `Practice/`: daily practice planner, session blocks, difficulty ratings, and history models.
+- `Shredding/`: shred drills, tab rendering, tempo progression, and shred history models.
 - `Fretboards/`: fretboard diagrams, rendering, and note-label modes.
 - `Triads/`: music-theory helpers, triad inversions, and progression game phrase generation.
 - `Pentatonics/`: scale and mode shape libraries.

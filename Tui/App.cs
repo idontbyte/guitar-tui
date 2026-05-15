@@ -33,7 +33,8 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
             WriteMenuOption("5", "Arpeggios", "Learn chord tones one note at a time for soloing, rhythm, and song changes.");
             WriteMenuOption("6", "Scales", "Explore scale shapes and practise using them over chord progressions.");
             WriteMenuOption("7", "Intervals", "See how notes relate to a root and practise targeting chord tones.");
-            WriteMenuOption("8", "Daily practice", "Build a guided session from the app's drills and track what needs review.");
+            WriteMenuOption("8", "Shredding", "Build clean speed with finger drills, picking work, and tempo tracking.");
+            WriteMenuOption("9", "Daily practice", "Build a guided session from the app's drills and track what needs review.");
             Console.WriteLine("0. Exit");
             Console.WriteLine();
             Console.Write("Choose an option > ");
@@ -62,6 +63,9 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
                     ShowIntervalsMenu();
                     break;
                 case "8":
+                    ShowShreddingMenu();
+                    break;
+                case "9":
                     ShowPracticeCoach();
                     break;
                 case "0":

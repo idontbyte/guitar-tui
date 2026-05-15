@@ -5,6 +5,7 @@ using GuitarResourcesTui.IntervalMaps;
 using GuitarResourcesTui.JazzChords;
 using GuitarResourcesTui.Pentatonics;
 using GuitarResourcesTui.Practice;
+using GuitarResourcesTui.Shredding;
 using GuitarResourcesTui.Triads;
 using GuitarResourcesTui.Tui;
 
@@ -17,6 +18,7 @@ new IntervalFunctionMapTests().RunAll();
 new JazzChordLibraryTests().RunAll();
 new ArpeggioLibraryTests().RunAll();
 new PracticeCoachPlannerTests().RunAll();
+new ShredLibraryTests().RunAll();
 Console.WriteLine("All tests passed.");
 
 internal sealed class FretboardRendererTests
@@ -878,6 +880,12 @@ internal sealed class PracticeCoachPlannerTests
         TestAssert.True(jazzPlan.Blocks.Any(block => block.Kind is PracticeBlockKind.JazzGuideTones or PracticeBlockKind.JazzShellVoicings), "jazz practice includes jazz chord work");
         TestAssert.True(jazzPlan.Blocks.Any(block => block.Kind is PracticeBlockKind.ArpeggioTargeting or PracticeBlockKind.ArpeggioSong or PracticeBlockKind.IntervalTargets), "jazz practice includes note-targeting work");
 
+        var shredPlan = PracticeCoachPlanner.BuildPlan(
+            new PracticeSessionRequest(10, PracticeFocus.Shredding),
+            emptyLog,
+            new DateOnly(2026, 5, 15));
+        TestAssert.True(shredPlan.Blocks.Any(block => block.Kind == PracticeBlockKind.ShredSpeed), "shredding practice includes speed work");
+
         var log = new PracticeSessionLog
         {
             Entries =
@@ -899,6 +907,56 @@ internal sealed class PracticeCoachPlannerTests
             new DateOnly(2026, 5, 15));
         TestAssert.True(biasedPlan.Blocks.Any(block => block.Id == "interval-targets"), "hard blocks are rotated back into later practice");
         TestAssert.SequenceEqual(["Intervals"], PracticeCoachPlanner.HardAreas(log), "hard areas summarize review bias");
+    }
+}
+
+internal sealed class ShredLibraryTests
+{
+    public void RunAll()
+    {
+        TestAssert.True(ShredLibrary.Drills.Count >= 10, "shred library has a useful starter drill set");
+        TestAssert.True(ShredLibrary.Drills.Any(drill => drill.Category == ShredDrillCategory.FingerIndependence), "shred library includes finger independence");
+        TestAssert.True(ShredLibrary.Drills.Any(drill => drill.Category == ShredDrillCategory.Picking), "shred library includes picking");
+        TestAssert.True(ShredLibrary.Drills.Any(drill => drill.Category == ShredDrillCategory.ScaleSequencing), "shred library includes scale sequencing");
+
+        var drill = ShredLibrary.Drills.Single(item => item.Id == "chromatic-1234");
+        var exercise = ShredLibrary.BuildExercise(drill, 5);
+        TestAssert.Equal(24, exercise.Notes.Count, "chromatic 1234 covers six strings");
+        TestAssert.SequenceEqual([5, 6, 7, 8], exercise.Notes.Take(4).Select(note => note.Fret), "finger numbers map to adjacent frets");
+        TestAssert.SequenceEqual([1, 2, 3, 4], exercise.Notes.Take(4).Select(note => note.Finger), "exercise preserves finger order");
+        TestAssert.SequenceEqual([PickStroke.Down, PickStroke.Up, PickStroke.Down, PickStroke.Up], exercise.Notes.Take(4).Select(note => note.PickStroke), "exercise applies alternate picking");
+
+        var tab = ShredLibrary.RenderTab(exercise);
+        TestAssert.Equal(6, tab.Count, "tab renders six strings");
+        TestAssert.True(tab.Any(line => line.Contains("-5--6--7--8", StringComparison.Ordinal)), "tab includes the fret pattern");
+        TestAssert.True(ShredLibrary.RenderFingerLine(exercise)[1].Contains("D U D U", StringComparison.Ordinal), "finger line includes pick strokes");
+
+        var outside = ShredLibrary.BuildExercise(ShredLibrary.Drills.Single(item => item.Id == "outside-picking"), 7);
+        TestAssert.Equal(6, outside.Notes.Count, "outside picking is a compact two-string cell");
+        TestAssert.SequenceEqual([1, 0, 1, 0, 1, 0], outside.Notes.Select(note => note.StringIndex), "outside picking crosses strings inside the cell");
+
+        var state = new ShredTempoState(drill.Id, 80, 0, 90, 0);
+        var update1 = ShredLibrary.ApplyAttempt(state, ShredAttemptResult.Clean);
+        TestAssert.Equal(80, update1.State.CurrentBpm, "one clean rep holds tempo");
+        TestAssert.Equal(1, update1.State.CleanStreak, "one clean rep increments clean streak");
+        var update2 = ShredLibrary.ApplyAttempt(update1.State, ShredAttemptResult.Clean);
+        var update3 = ShredLibrary.ApplyAttempt(update2.State, ShredAttemptResult.Clean);
+        TestAssert.Equal(85, update3.State.CurrentBpm, "three clean reps raise tempo");
+        TestAssert.Equal(80, update3.State.TopCleanBpm, "top clean tempo records completed clean tempo");
+        var messy = ShredLibrary.ApplyAttempt(update3.State, ShredAttemptResult.Messy);
+        TestAssert.Equal(80, messy.State.CurrentBpm, "messy attempt drops tempo");
+        TestAssert.Equal(0, messy.State.CleanStreak, "messy attempt resets clean streak");
+
+        var log = new ShredPracticeLog();
+        ShredLibrary.RecordAttempt(log, drill, update3.State, ShredAttemptResult.Clean, new DateTimeOffset(2026, 5, 15, 12, 0, 0, TimeSpan.Zero));
+        TestAssert.Equal(1, log.Records.Count, "shred log records attempts");
+        TestAssert.Equal(80, log.Records[0].TopCleanBpm, "shred log stores top clean tempo");
+        var started = ShredLibrary.StartingTempoFor(drill, log);
+        TestAssert.Equal(70, started.CurrentBpm, "speed builder restarts below top clean tempo");
+
+        var workout = ShredLibrary.BuildDailyWorkout(log);
+        TestAssert.Equal(5, workout.Count, "daily shred workout has five drills");
+        TestAssert.True(workout.Select(item => item.Id).Distinct().Count() == workout.Count, "daily shred workout does not duplicate drills");
     }
 }
 
