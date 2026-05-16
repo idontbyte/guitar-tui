@@ -255,6 +255,143 @@ public sealed partial class App
         }
     }
 
+    private static void WarmJazzCompExamples(
+        IReadOnlyList<JazzChordSymbol> progression,
+        IReadOnlyList<int> chordLengths,
+        JazzRhythmPattern pattern,
+        int bpm,
+        TimeSignature timeSignature)
+    {
+        for (var index = 0; index < progression.Count; index++)
+        {
+            EnsureJazzCompExampleFile(progression[index], chordLengths[index], pattern, bpm, timeSignature);
+        }
+    }
+
+    private static AudioPlayback? PlayJazzCompExample(
+        JazzChordSymbol chord,
+        int beatsPerChord,
+        JazzRhythmPattern pattern,
+        int bpm,
+        TimeSignature timeSignature)
+    {
+        var path = EnsureJazzCompExampleFile(chord, beatsPerChord, pattern, bpm, timeSignature);
+        return PlayAudioFile(path);
+    }
+
+    private static string EnsureJazzCompExampleFile(
+        JazzChordSymbol chord,
+        int beatsPerChord,
+        JazzRhythmPattern pattern,
+        int bpm,
+        TimeSignature timeSignature)
+    {
+        var path = JazzCompExampleFilePath(chord, beatsPerChord, pattern, bpm, timeSignature);
+        if (!File.Exists(path))
+        {
+            WriteJazzCompExampleWav(path, BackingChordFor(chord), beatsPerChord, pattern, bpm, timeSignature);
+        }
+
+        return path;
+    }
+
+    private static string JazzCompExampleFilePath(
+        JazzChordSymbol chord,
+        int beatsPerChord,
+        JazzRhythmPattern pattern,
+        int bpm,
+        TimeSignature timeSignature)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "guitar-tui-jazz-comp");
+        Directory.CreateDirectory(directory);
+
+        var patternKey = SafeAudioFileKey(pattern.Name);
+        var hitKey = string.Join("-", pattern.HitIndexes.Order());
+        var accentKey = string.Join("-", pattern.AccentIndexes.Order());
+        return Path.Combine(directory, $"{chord.Root.Replace('#', 's')}-{SafeAudioFileKey(chord.Quality.Suffix)}-{patternKey}-{hitKey}-{accentKey}-{beatsPerChord}-{bpm}-{timeSignature.DisplayName.Replace('/', '-')}-v2.wav");
+    }
+
+    private static void WriteJazzCompExampleWav(
+        string path,
+        BackingChord chord,
+        int beatsPerChord,
+        JazzRhythmPattern pattern,
+        int bpm,
+        TimeSignature timeSignature)
+    {
+        const int sampleRate = 44100;
+        const short channels = 1;
+        const short bitsPerSample = 16;
+        var secondsPerBeat = 60d / bpm;
+        var durationSeconds = beatsPerChord * secondsPerBeat;
+        var samples = Math.Max(1, (int)(sampleRate * durationSeconds));
+        var dataSize = samples * channels * bitsPerSample / 8;
+        var guitarFrequencies = GuitarChordFrequencies(chord).ToArray();
+        var bassFrequency = BassFrequency(chord);
+        var subdivisionsPerBar = pattern.Counts.Count;
+        var secondsPerSubdivision = secondsPerBeat * timeSignature.BeatsPerBar / subdivisionsPerBar;
+
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream, Encoding.ASCII);
+
+        writer.Write(Encoding.ASCII.GetBytes("RIFF"));
+        writer.Write(36 + dataSize);
+        writer.Write(Encoding.ASCII.GetBytes("WAVE"));
+        writer.Write(Encoding.ASCII.GetBytes("fmt "));
+        writer.Write(16);
+        writer.Write((short)1);
+        writer.Write(channels);
+        writer.Write(sampleRate);
+        writer.Write(sampleRate * channels * bitsPerSample / 8);
+        writer.Write((short)(channels * bitsPerSample / 8));
+        writer.Write(bitsPerSample);
+        writer.Write(Encoding.ASCII.GetBytes("data"));
+        writer.Write(dataSize);
+
+        for (var sample = 0; sample < samples; sample++)
+        {
+            var time = sample / (double)sampleRate;
+            var value = 0d;
+
+            for (var subdivision = 0; subdivision < beatsPerChord * 2; subdivision++)
+            {
+                var patternIndex = subdivision % subdivisionsPerBar;
+                if (!pattern.HitIndexes.Contains(patternIndex))
+                {
+                    continue;
+                }
+
+                var hitStart = subdivision * secondsPerSubdivision;
+                var hitOffset = time - hitStart;
+                if (hitOffset < 0 || hitOffset > secondsPerSubdivision)
+                {
+                    continue;
+                }
+
+                var accented = pattern.AccentIndexes.Contains(patternIndex);
+                var beatInBar = (subdivision / 2) % timeSignature.BeatsPerBar;
+                var bassyBeat = beatInBar is 0 or 2;
+                var gain = accented ? 1.25 : 0.82;
+                value += JazzCompBass(bassFrequency, hitOffset, bassyBeat, pattern.Name) * gain;
+                value += PickTransient(hitOffset, accented) * (accented ? 0.42 : 0.2);
+
+                foreach (var (frequency, stringIndex) in guitarFrequencies.Select((frequency, index) => (frequency, index)))
+                {
+                    var stringDelay = stringIndex * (accented ? 0.0035 : 0.0065);
+                    value += JazzCompGuitarString(frequency, hitOffset - stringDelay, accented, pattern.Name) * gain * 0.34;
+                }
+
+                if (accented)
+                {
+                    value += MutedChuck(hitOffset) * 0.38;
+                }
+            }
+
+            value = Math.Tanh(value * 1.18d) * 0.86d;
+            writer.Write((short)(value * short.MaxValue));
+        }
+    }
+
     private static string EnsureBackingChordFile(BackingChord chord, int beatsPerChord, int bpm, TimeSignature timeSignature)
     {
         var durationSeconds = beatsPerChord * 60d / bpm;
@@ -502,6 +639,65 @@ public sealed partial class App
         return value / frequencies.Count * envelope;
     }
 
+    private static double JazzCompGuitarString(double frequency, double time, bool accented, string patternName)
+    {
+        if (time < 0)
+        {
+            return 0;
+        }
+
+        var release = patternName == "La pompe"
+            ? accented ? 31d : 46d
+            : accented ? 14d : 18d;
+        var attack = accented ? 0.0018d : 0.0035d;
+        var envelope = Math.Exp(-time * release) * Math.Min(1d, time / attack);
+        var tone = Math.Sin(2d * Math.PI * frequency * time)
+            + 0.52d * Math.Sin(2d * Math.PI * frequency * 2.01d * time)
+            + 0.27d * Math.Sin(2d * Math.PI * frequency * 3.02d * time)
+            + 0.12d * Math.Sin(2d * Math.PI * frequency * 4.11d * time);
+
+        return Math.Tanh(tone * (accented ? 1.65 : 1.15)) * envelope;
+    }
+
+    private static double JazzCompBass(double frequency, double time, bool bassyBeat, string patternName)
+    {
+        if (time < 0)
+        {
+            return 0;
+        }
+
+        var laPompe = patternName == "La pompe";
+        var level = bassyBeat ? laPompe ? 0.54d : 0.28d : 0.13d;
+        var envelope = Math.Exp(-time * (laPompe ? 34d : 16d)) * Math.Min(1d, time / 0.004d);
+        return Math.Sin(2d * Math.PI * frequency * time) * envelope * level;
+    }
+
+    private static double PickTransient(double time, bool accented)
+    {
+        if (time < 0 || time > 0.028)
+        {
+            return 0;
+        }
+
+        var noise = Math.Sin((time * 44100d + 11d) * 57.221d) * 19341.819d;
+        noise -= Math.Floor(noise);
+        var click = (noise * 2d - 1d) * Math.Exp(-time * (accented ? 105d : 135d));
+        var snap = Math.Sin(2d * Math.PI * (accented ? 2100d : 1450d) * time) * Math.Exp(-time * 95d);
+        return click * 0.62d + snap * 0.38d;
+    }
+
+    private static double MutedChuck(double time)
+    {
+        if (time < 0 || time > 0.055)
+        {
+            return 0;
+        }
+
+        var noise = Math.Sin((time * 44100d + 37d) * 31.337d) * 24634.6345d;
+        noise -= Math.Floor(noise);
+        return (noise * 2d - 1d) * Math.Exp(-time * 72d);
+    }
+
     private static double Envelope(double time, double totalDuration, double releaseStart)
     {
         var attack = Math.Min(0.035, totalDuration * 0.08);
@@ -521,6 +717,13 @@ public sealed partial class App
     }
 
     private static double MidiToFrequency(int midiNote) => 440d * Math.Pow(2d, (midiNote - 69) / 12d);
+
+    private static string SafeAudioFileKey(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars().ToHashSet();
+        return new string(value.Select(character => invalid.Contains(character) || character is '/' or '\\' or ' ' ? '-' : character).ToArray())
+            .Replace("#", "s", StringComparison.Ordinal);
+    }
 
     private static double TunerFrequency(int midiNote) => MidiToFrequency(midiNote);
 

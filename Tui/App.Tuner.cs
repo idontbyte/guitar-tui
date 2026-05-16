@@ -24,8 +24,8 @@ public sealed partial class App
             {
                 Console.Clear();
                 WriteHeader("Guitar tuner");
-                Console.WriteLine("Choose a string to play a reference note.");
-                Console.WriteLine("Tune your guitar string until it matches the pitch you hear.");
+                WriteDescriptionLine("Choose a string to play a reference note.");
+                WriteDescriptionLine("Tune your guitar string until it matches the pitch you hear.");
                 Console.WriteLine();
                 foreach (var note in StandardTuning)
                 {

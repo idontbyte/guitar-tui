@@ -33,7 +33,7 @@ Guitar TUI opens with these areas:
 - `Tuner`: play reference notes for the guitar strings or a custom note.
 - `Cowboy chords`: learn open-position chords and practise changing between them in songs.
 - `Triads`: study 3-note chord shapes and inversions across the fretboard.
-- `Jazz chords`: learn guide tones, shell voicings, ii-V-I movement, and jazz standards.
+- `Jazz`: learn jazz terms, comping, guide tones, shell voicings, ii-V-I movement, standards, and soloing routes.
 - `Arpeggios`: learn chord tones one note at a time for soloing, rhythm, and song changes.
 - `Scales`: explore scale shapes and practise using them over chord progressions.
 - `Intervals`: see how notes relate to a root and practise targeting chord tones.
@@ -112,16 +112,20 @@ Useful triad-game controls:
 - `L`: cycle note-label mode.
 - `N`: jump to the next chord.
 
-## Jazz Chords
+## Jazz
 
-- `Fundamentals path`: a guided path through seventh chord formulas, guide tones, shell voicings, major ii-V-I, minor ii-V-i, and standards practice.
-- `Chord type list`: explains common jazz colors including `maj7`, `6`, `6/9`, `m7`, `m9`, `7`, `9`, `13`, `7b9`, `7#9`, `m7b5`, and `dim7`.
-- `Voicing reference`: shows playable guide-tone, shell, and full voicing shapes.
+- `Jazz roadmap`: explains the learning route from chord-tone basics to comping, standards, guide-tone soloing, and style vocabulary.
+- `Jazz terms`: defines common language such as changes, head, chorus, form, comping, swing, guide tones, shell voicings, drop 2, altered dominants, enclosures, and la pompe.
+- `Chords and voicings`: contains the chord fundamentals path, chord type list, and playable guide-tone, shell, and full voicing reference.
+- `Comping and rhythm`: explains swing feel, four-to-the-bar, Charleston rhythms, anticipations, space, voice-led comping, and gypsy-jazz rhythm, then opens a rhythm trainer with click/backing audio.
 - `ii-V-I trainer`: drills major or minor ii-V-I progressions in random or chosen keys.
-- `Song library`: applies jazz chord vocabulary to standards-style progressions with concept tags.
-- `Random arrangement game`: creates a fresh connected jazz progression to practise.
+- `Guide-tone soloing`: teaches why the 3rds and 7ths guide the ear through changes and opens a line-builder game for direct targets, approaches, enclosures, and arpeggio outlines.
+- `Standards library`: applies jazz vocabulary to standards-style progressions with concept tags, staged study paths, comping drills, solo-target prompts, and printable study sheets.
+- `Django / gypsy jazz path`: connects la pompe rhythm, minor 6 sounds, arpeggios, chromatic approaches, diminished passing colors, and repertoire.
+- `Random jazz workout`: creates a fresh connected jazz progression to practise.
+- `Printable jazz sheets`: opens voicing sheets, ii-V-I worksheets, standards study sheets, and a jazz roadmap sheet.
 
-Jazz games show the current chord, the next movement, guide-tone summaries, and upcoming voicings.
+Jazz games show the current chord, the next movement, guide-tone summaries, and upcoming voicings. Rhythm and soloing drills can play chord audio, target-note audio, click, and backing chords where supported.
 
 Useful jazz controls:
 
@@ -132,6 +136,7 @@ Useful jazz controls:
 - `S`: mute or unmute backing chords.
 - `L`: cycle note-label mode.
 - `N`: jump to the next chord.
+- `C` / `T`: replay chord or target note in line-builder prompts.
 
 ## Arpeggios
 
@@ -243,7 +248,7 @@ dotnet run --project Tests/GuitarResourcesTui.Tests/GuitarResourcesTui.Tests.csp
 - `Tui/App.Audio.cs`: click, backing synth, tuner tone playback, and voice prompts.
 - `Tui/App.CowboyChords.cs`: cowboy chord reference and song mode.
 - `Tui/App.Tuner.cs`: tuner screens and note parsing.
-- `Tui/App.JazzChords.cs`: jazz chord menus, voicing reference, ii-V-I trainer, standards library, and jazz games.
+- `Tui/App.JazzChords.cs`: jazz menus, glossary, roadmap, comping lessons, voicing reference, ii-V-I trainer, standards library, and jazz games.
 - `Tui/App.Arpeggios.cs`: arpeggio lessons, shape references, targeting game, song game, rhythm patterns, and printable sheets.
 - `Tui/App.PracticeCoach.cs`: daily practice session UI, local history, and drill launching.
 - `Tui/App.Shredding.cs`: shredding menu, drill reference screens, speed builder, and daily shred workout.

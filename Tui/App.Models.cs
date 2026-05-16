@@ -47,4 +47,27 @@ public sealed partial class App
     {
         public string DisplayName => $"{Root}{Suffix}";
     }
+
+    private sealed record JazzRhythmPattern(
+        string Name,
+        string Description,
+        IReadOnlyList<string> Counts,
+        IReadOnlySet<int> HitIndexes,
+        IReadOnlySet<int> AccentIndexes,
+        string Instruction);
+
+    private enum JazzSoloExerciseKind
+    {
+        Direct,
+        Approach,
+        Enclosure,
+        ArpeggioOutline
+    }
+
+    private sealed record JazzSoloPrompt(
+        GuitarResourcesTui.JazzChords.JazzChordSymbol Chord,
+        string TargetInterval,
+        string TargetNote,
+        string Instruction,
+        string PracticeText);
 }

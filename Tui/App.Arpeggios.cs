@@ -15,8 +15,8 @@ public sealed partial class App
         {
             Console.Clear();
             WriteHeader("Arpeggios");
-            Console.WriteLine("An arpeggio is a chord played one note at a time.");
-            Console.WriteLine("They are the chord tones soloists target and the broken-chord patterns rhythm players pick.");
+            WriteDescriptionLine("An arpeggio is a chord played one note at a time.");
+            WriteDescriptionLine("They are the chord tones soloists target and the broken-chord patterns rhythm players pick.");
             Console.WriteLine();
             WriteMenuOption("1", "What are arpeggios?", "Learn what arpeggios are, why they matter, and how they differ from scales.");
             WriteMenuOption("2", "Shape reference", "See movable arpeggio maps for triads and 7th chords.");
@@ -63,27 +63,27 @@ public sealed partial class App
     {
         Console.Clear();
         WriteHeader("What are arpeggios?");
-        Console.WriteLine("Chord: notes played together.");
-        Console.WriteLine("Arpeggio: the same chord notes played separately.");
-        Console.WriteLine("Scale: a wider note collection. Arpeggio: the strongest chord tones inside that collection.");
+        WriteDescriptionLine("Chord: notes played together.");
+        WriteDescriptionLine("Arpeggio: the same chord notes played separately.");
+        WriteDescriptionLine("Scale: a wider note collection. Arpeggio: the strongest chord tones inside that collection.");
         Console.WriteLine();
         Console.WriteLine("Examples");
-        Console.WriteLine("C major chord tones: C E G       Formula: R 3 5");
-        Console.WriteLine("Cmaj7 chord tones:   C E G B     Formula: R 3 5 7");
-        Console.WriteLine("Cm7 chord tones:     C D# G A#   Formula: R b3 5 b7");
-        Console.WriteLine("G7 chord tones:      G B D F     Formula: R 3 5 b7");
+        WriteDescriptionLine("C major chord tones: C E G       Formula: R 3 5");
+        WriteDescriptionLine("Cmaj7 chord tones:   C E G B     Formula: R 3 5 7");
+        WriteDescriptionLine("Cm7 chord tones:     C Eb G Bb   Formula: R b3 5 b7");
+        WriteDescriptionLine("G7 chord tones:      G B D F     Formula: R 3 5 b7");
         Console.WriteLine();
         Console.WriteLine("Why soloists use them");
-        Console.WriteLine("- They outline the chord currently being played.");
-        Console.WriteLine("- They make melodies sound connected to the harmony.");
-        Console.WriteLine("- Landing on a 3rd or 7th during a chord change can sound more intentional than running a scale.");
+        WriteDescriptionLine("- They outline the chord currently being played.");
+        WriteDescriptionLine("- They make melodies sound connected to the harmony.");
+        WriteDescriptionLine("- Landing on a 3rd or 7th during a chord change can sound more intentional than running a scale.");
         Console.WriteLine();
         Console.WriteLine("Why rhythm players use them");
-        Console.WriteLine("- Fingerpicking and broken-chord parts are arpeggios.");
-        Console.WriteLine("- Picking chord tones one at a time creates motion without changing harmony.");
-        Console.WriteLine("- Jazz players often break shell voicings into small rhythmic figures.");
+        WriteDescriptionLine("- Fingerpicking and broken-chord parts are arpeggios.");
+        WriteDescriptionLine("- Picking chord tones one at a time creates motion without changing harmony.");
+        WriteDescriptionLine("- Jazz players often break shell voicings into small rhythmic figures.");
         Console.WriteLine();
-        Console.WriteLine("Press any key to go back.");
+        WriteDescriptionLine("Press any key to go back.");
         Console.ReadKey(intercept: true);
     }
 
@@ -93,7 +93,7 @@ public sealed partial class App
         {
             Console.Clear();
             WriteHeader(printOnly ? "Printable arpeggio sheets" : "Arpeggio shape reference");
-            Console.WriteLine("Choose a root and chord type. The app shows chord tones across movable fretboard windows.");
+            WriteDescriptionLine("Choose a root and chord type. The app shows chord tones across movable fretboard windows.");
             Console.WriteLine();
 
             var root = ReadMenuChoice("Choose a root", MusicTheory.ChromaticRoots, allowBack: true);
@@ -180,8 +180,8 @@ public sealed partial class App
     {
         Console.Clear();
         WriteHeader("Find the chord tone");
-        Console.WriteLine("The app gives you a chord and a target chord tone. Hear the chord, then find the target note.");
-        Console.WriteLine("This teaches soloing through changes: land on strong notes when the chord arrives.");
+        WriteDescriptionLine("The app gives you a chord and a target chord tone. Hear the chord, then find the target note.");
+        WriteDescriptionLine("This teaches soloing through changes: land on strong notes when the chord arrives.");
         Console.WriteLine();
 
         var setup = ReadArpeggioProgressionSetup();
@@ -280,8 +280,8 @@ public sealed partial class App
     {
         Console.Clear();
         WriteHeader("Song changes arpeggio game");
-        Console.WriteLine("Follow the chord changes by switching to the matching arpeggio.");
-        Console.WriteLine("This is the bridge between knowing shapes and soloing through a progression.");
+        WriteDescriptionLine("Follow the chord changes by switching to the matching arpeggio.");
+        WriteDescriptionLine("This is the bridge between knowing shapes and soloing through a progression.");
         Console.WriteLine();
 
         var setup = ReadArpeggioProgressionSetup();
@@ -450,24 +450,24 @@ public sealed partial class App
     {
         Console.Clear();
         WriteHeader("Rhythm arpeggio patterns");
-        Console.WriteLine("Rhythm arpeggios are broken chords: you hold a chord shape and pick its notes separately.");
-        Console.WriteLine("Use them for fingerpicking, ballads, pop accompaniments, and quiet comping.");
+        WriteDescriptionLine("Rhythm arpeggios are broken chords: you hold a chord shape and pick its notes separately.");
+        WriteDescriptionLine("Use them for fingerpicking, ballads, pop accompaniments, and quiet comping.");
         Console.WriteLine();
         Console.WriteLine("Practice these over any chord shape you know:");
-        Console.WriteLine("1. Ascending: low string -> high string.");
-        Console.WriteLine("2. Descending: high string -> low string.");
-        Console.WriteLine("3. Bass + upper notes: bass, 3rd/4th string, 2nd string, 1st string.");
-        Console.WriteLine("4. Outside-in: lowest, highest, middle-low, middle-high.");
-        Console.WriteLine("5. 6/8 ballad: bass, middle, high, middle, high, middle.");
-        Console.WriteLine("6. Jazz shell break-up: root, 7th, 3rd, 7th.");
+        WriteDescriptionLine("1. Ascending: low string -> high string.");
+        WriteDescriptionLine("2. Descending: high string -> low string.");
+        WriteDescriptionLine("3. Bass + upper notes: bass, 3rd/4th string, 2nd string, 1st string.");
+        WriteDescriptionLine("4. Outside-in: lowest, highest, middle-low, middle-high.");
+        WriteDescriptionLine("5. 6/8 ballad: bass, middle, high, middle, high, middle.");
+        WriteDescriptionLine("6. Jazz shell break-up: root, 7th, 3rd, 7th.");
         Console.WriteLine();
         Console.WriteLine("How to practise");
-        Console.WriteLine("- Start with C - G - Am - F or Dm7 - G7 - Cmaj7.");
-        Console.WriteLine("- Keep the chord ringing while each note speaks clearly.");
-        Console.WriteLine("- Change chords on beat 1, then keep the picking hand moving.");
-        Console.WriteLine("- Later, mute some notes for a tighter rhythmic comping sound.");
+        WriteDescriptionLine("- Start with C - G - Am - F or Dm7 - G7 - Cmaj7.");
+        WriteDescriptionLine("- Keep the chord ringing while each note speaks clearly.");
+        WriteDescriptionLine("- Change chords on beat 1, then keep the picking hand moving.");
+        WriteDescriptionLine("- Later, mute some notes for a tighter rhythmic comping sound.");
         Console.WriteLine();
-        Console.WriteLine("Press any key to go back.");
+        WriteDescriptionLine("Press any key to go back.");
         Console.ReadKey(intercept: true);
     }
 
@@ -512,7 +512,7 @@ public sealed partial class App
 
     private TriadProgressionSetup? ReadArpeggioProgressionSetup()
     {
-        Console.WriteLine("Choose where the chord progression comes from.");
+        WriteDescriptionLine("Choose where the chord progression comes from.");
         Console.WriteLine();
         WriteMenuOption("1", "Simple mode", "The app creates a short I-vi-ii-V style arpeggio workout.");
         WriteMenuOption("C", "Custom mode", "Type chords such as Dm7 G7 Cmaj7 or C G Am F.");
@@ -669,7 +669,7 @@ public sealed partial class App
 
     private static TunerNote TargetTunerNote(ArpeggioPrompt prompt)
     {
-        var midiNote = 60 + MusicTheory.PitchClassFor(prompt.TargetNote);
+        var midiNote = 60 + MusicTheory.Normalize(MusicTheory.PitchClassFor(prompt.Chord.Root) + ArpeggioLibrary.SemitonesFor(prompt.TargetInterval));
         return new TunerNote(string.Empty, $"{prompt.TargetNote} target note", $"{prompt.TargetNote}4", midiNote);
     }
 

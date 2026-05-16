@@ -14,6 +14,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
     private const string Fifth = "\e[1;38;5;39m";
     private const string Pentatonic = "\e[1;38;5;213m";
     private const string BlueNote = "\e[1;38;5;51m";
+    private const string Description = "\e[38;5;244m";
 
     private readonly FretboardRenderer _renderer = new();
     private readonly TriadProgressionGameLibrary _triadGame = new(triads);
@@ -29,7 +30,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
             WriteMenuOption("1", "Tuner", "Play reference notes so you can tune by ear.");
             WriteMenuOption("2", "Cowboy chords", "Learn open-position chords and practise changing between them in songs.");
             WriteMenuOption("3", "Triads", "Study 3-note chord shapes and inversions across the fretboard.");
-            WriteMenuOption("4", "Jazz chords", "Learn guide tones, shell voicings, ii-V-I movement, and jazz standards.");
+            WriteMenuOption("4", "Jazz", "Learn jazz terms, comping, guide tones, shell voicings, ii-V-I movement, and standards.");
             WriteMenuOption("5", "Arpeggios", "Learn chord tones one note at a time for soloing, rhythm, and song changes.");
             WriteMenuOption("6", "Scales", "Explore scale shapes and practise using them over chord progressions.");
             WriteMenuOption("7", "Intervals", "See how notes relate to a root and practise targeting chord tones.");
@@ -51,7 +52,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
                     ShowTriadsMenu();
                     break;
                 case "4":
-                    ShowJazzChordsMenu();
+                    ShowJazzMenu();
                     break;
                 case "5":
                     ShowArpeggiosMenu();
@@ -84,8 +85,8 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
         {
             Console.Clear();
             WriteHeader("Triads");
-            Console.WriteLine("A triad is a 3-note chord: root, third, and fifth.");
-            Console.WriteLine("Inversions are the same notes rearranged so a different chord tone is lowest.");
+            WriteDescriptionLine("A triad is a 3-note chord: root, third, and fifth.");
+            WriteDescriptionLine("Inversions are the same notes rearranged so a different chord tone is lowest.");
             Console.WriteLine();
             WriteMenuOption("1", "Inversions", "Reference all major/minor triad shapes by string group.");
             WriteMenuOption("2", "Music game", "Practise connected triad shapes through chord progressions.");
@@ -524,7 +525,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
 
     private TriadProgressionSetup? ReadTriadProgressionSetup()
     {
-        Console.WriteLine("Choose where the chord progression comes from.");
+        WriteDescriptionLine("Choose where the chord progression comes from.");
         Console.WriteLine();
         WriteMenuOption("1", "Simple mode", "The app creates a short random progression so you can start practising immediately.");
         WriteMenuOption("C", "Custom mode", "Type your own chords, such as Am C G D.");
@@ -613,7 +614,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
     private TriadProgressionSetup? ReadScaleSongSetup(string keyRoot, PentatonicScaleKind scaleKind)
     {
         Console.WriteLine();
-        Console.WriteLine("Choose a progression to practise this scale over.");
+        WriteDescriptionLine("Choose a progression to practise this scale over.");
         Console.WriteLine();
         WriteMenuOption("1", "Simple mode", "The app creates chords that fit the selected scale.");
         WriteMenuOption("C", "Custom mode", "Type your own chords and hear how the scale sits against them.");
@@ -766,8 +767,8 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
         {
             Console.Clear();
             WriteHeader("Intervals");
-            Console.WriteLine("Intervals name the distance from a root note, such as 3, 5, b7, or 9.");
-            Console.WriteLine("They help you understand chord tones and target notes anywhere on the neck.");
+            WriteDescriptionLine("Intervals name the distance from a root note, such as 3, 5, b7, or 9.");
+            WriteDescriptionLine("They help you understand chord tones and target notes anywhere on the neck.");
             Console.WriteLine();
             WriteMenuOption("1", "Lookup", "Pick a root and see interval names across a fretboard window.");
             WriteMenuOption("2", "Song game", "Practise finding target intervals while chords change.");
@@ -800,7 +801,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
         {
             Console.Clear();
             WriteHeader("Interval lookup");
-            Console.WriteLine("Choose a root note first. Every label will be measured from that root.");
+            WriteDescriptionLine("Choose a root note first. Every label will be measured from that root.");
             Console.WriteLine();
 
             var root = ReadMenuChoice("Choose a root", MusicTheory.ChromaticRoots, allowBack: true);
@@ -828,7 +829,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
 
                     Console.Clear();
                     WriteHeader($"{root} interval lookup ({diagram.StartFret}-{diagram.StartFret + diagram.Length - 1})");
-                    Console.WriteLine("Use this as a map: R is home, 3/b3 defines major/minor color, 5 is stable, and b7 adds dominant/minor-7 color.");
+                    WriteDescriptionLine("Use this as a map: R is home, 3/b3 defines major/minor color, 5 is stable, and b7 adds dominant/minor-7 color.");
                     Console.WriteLine($"Labels: {Root}R{Reset} = root, intervals are relative to {root}");
                     Console.WriteLine($"Showing: {string.Join(" ", selectedIntervals)}");
                     Console.WriteLine($"Anchor fret: {anchorFret}");
@@ -1141,7 +1142,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
         {
             Console.Clear();
             WriteHeader("Scales");
-            Console.WriteLine("Scales are note collections for melodies, riffs, and improvising over chords.");
+            WriteDescriptionLine("Scales are note collections for melodies, riffs, and improvising over chords.");
             Console.WriteLine();
             WriteMenuOption("1", "Shapes", "See movable fretboard patterns for a chosen root and scale.");
             WriteMenuOption("2", "Song game", "Practise using a chosen scale while chords move underneath.");
@@ -1178,7 +1179,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
         {
             Console.Clear();
             WriteHeader("Scale shapes");
-            Console.WriteLine("Pick a root note, then a scale type. The app will show common positions across the neck.");
+            WriteDescriptionLine("Pick a root note, then a scale type. The app will show common positions across the neck.");
             Console.WriteLine();
 
             var root = ReadMenuChoice("Choose a root", MusicTheory.ChromaticRoots, allowBack: true);
@@ -1203,7 +1204,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
 
                     Console.Clear();
                     WriteHeader($"{root} {PentatonicLibrary.NameFor(scaleKind)} shapes");
-                    Console.WriteLine("Scale degrees show how each note functions relative to the scale root.");
+                    WriteDescriptionLine("Scale degrees show how each note functions relative to the scale root.");
                     Console.WriteLine($"Labels: {Root}R{Reset} = root, intervals show scale degrees ({Pentatonic}2/4/6/7/flats{Reset}, {Third}3/b3{Reset}, {BlueNote}#4/b5{Reset}, {Fifth}5{Reset})");
                     Console.WriteLine($"T = toggle major/minor, {NoteLabelCommandText()}, B = back, Q = main menu");
                     Console.WriteLine();
@@ -2324,7 +2325,14 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
     private static void WriteMenuOption(string key, string title, string description)
     {
         Console.WriteLine($"{key}. {title}");
-        Console.WriteLine($"   {description}");
+        WriteDescriptionLine($"   {description}");
+    }
+
+    private static void WriteDescriptionLine(string value)
+    {
+        Console.Write(Description);
+        Console.WriteLine(value);
+        Console.Write(Reset);
     }
 
     private static int GetUsableConsoleWidth()

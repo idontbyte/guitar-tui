@@ -52,6 +52,23 @@ internal sealed class FretboardRendererTests
         TestAssert.True(
             markerLines.Any(line => line.Contains("\e[1;38;5;46m  X ", StringComparison.Ordinal)),
             "marker note labels keep the interval color");
+
+        var accidentalDiagram = new FretboardDiagram(
+            ["E"],
+            StartFret: 1,
+            Length: 2,
+            [new FretPosition(0, 1, "b3")]);
+
+        renderer.NoteLabelMode = NoteLabelMode.IntervalNames;
+        renderer.AccidentalDisplayMode = AccidentalDisplayMode.Unicode;
+        TestAssert.True(
+            renderer.Render(accidentalDiagram).Any(line => line.Contains("♭3", StringComparison.Ordinal)),
+            "unicode accidental mode renders compact flat symbols");
+
+        renderer.AccidentalDisplayMode = AccidentalDisplayMode.Ascii;
+        TestAssert.True(
+            renderer.Render(accidentalDiagram).Any(line => line.Contains("b3", StringComparison.Ordinal)),
+            "ascii accidental mode renders Windows-safe flat labels");
     }
 }
 
@@ -759,6 +776,8 @@ internal sealed class JazzChordLibraryTests
         {
             TestAssert.SequenceEqual(JazzChordLibrary.IntervalsFor(item.Chord.Quality, JazzVoicingMode.GuideTones).OrderBy(LabelSortOrder), item.Diagram.Positions.Select(position => position.Label).OrderBy(LabelSortOrder), $"{item.Title} contains only guide tones");
         }
+        TestAssert.SequenceEqual(["b3", "b5"], JazzChordLibrary.IntervalsFor(JazzChordLibrary.Quality("m7b5"), JazzVoicingMode.GuideTones), "half-diminished essential tones include the flat fifth");
+        TestAssert.SequenceEqual(["R", "b3", "b5"], JazzChordLibrary.IntervalsFor(JazzChordLibrary.Quality("dim7"), JazzVoicingMode.Shell), "diminished shell tones include the flat fifth");
 
         var shellPhrase = library.BuildPhrase(progression, voicingMode: JazzVoicingMode.Shell);
         foreach (var item in shellPhrase)
@@ -831,6 +850,10 @@ internal sealed class ArpeggioLibraryTests
 
         var cMajor = new ArpeggioChordSymbol("C", ArpeggioLibrary.Quality(string.Empty));
         TestAssert.Equal("C E G", ArpeggioLibrary.NotesFor(cMajor), "major arpeggio notes use formula intervals");
+        var cMinorSeven = new ArpeggioChordSymbol("C", ArpeggioLibrary.Quality("m7"));
+        TestAssert.Equal("C Eb G Bb", ArpeggioLibrary.NotesFor(cMinorSeven), "minor arpeggio notes use correct flat spellings");
+        TestAssert.Equal("D#", MusicTheory.NameForInterval("C", "#9"), "sharp ninth spells as raised second");
+        TestAssert.Equal("Bbb", MusicTheory.NameForInterval("C", "bb7"), "diminished seventh spells as double-flat seventh");
         TestAssert.True(ArpeggioLibrary.TeachingHintFor(cMajor).Contains("landing points", StringComparison.Ordinal), "arpeggio teaching hint explains use");
 
         foreach (var quality in ArpeggioLibrary.Qualities)

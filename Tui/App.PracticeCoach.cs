@@ -21,8 +21,8 @@ public sealed partial class App
 
             Console.Clear();
             WriteHeader("Daily practice");
-            Console.WriteLine("Build a focused session from the app's drills, then mark each block easy, okay, or hard.");
-            Console.WriteLine("Hard and skipped blocks are gently rotated back into future sessions.");
+            WriteDescriptionLine("Build a focused session from the app's drills, then mark each block easy, okay, or hard.");
+            WriteDescriptionLine("Hard and skipped blocks are gently rotated back into future sessions.");
             Console.WriteLine();
             WritePracticeSummary(log);
             Console.WriteLine();

@@ -162,7 +162,7 @@ public sealed class ArpeggioLibrary(Random? random = null)
 
     public static string NoteNameFor(string root, string interval)
     {
-        return MusicTheory.NameFor(MusicTheory.PitchClassFor(root) + SemitonesFor(interval));
+        return MusicTheory.NameForInterval(root, interval);
     }
 
     public static string NotesFor(ArpeggioChordSymbol chord)

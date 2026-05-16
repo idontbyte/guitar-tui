@@ -35,7 +35,7 @@ public sealed partial class App
         {
             Console.Clear();
             WriteHeader("Cowboy chords");
-            Console.WriteLine("Cowboy chords are the familiar open-position grips used in countless songs.");
+            WriteDescriptionLine("Cowboy chords are the familiar open-position grips used in countless songs.");
             Console.WriteLine();
             WriteMenuOption("1", "Chord reference", "See the common open chords with root/third/fifth labels.");
             WriteMenuOption("2", "Song mode", "Practise changing between open chords in real progressions with click and backing.");
@@ -68,7 +68,7 @@ public sealed partial class App
         {
             Console.Clear();
             WriteHeader("Cowboy chord reference");
-            Console.WriteLine("These diagrams show which strings to fret, which strings stay open, and which strings are muted.");
+            WriteDescriptionLine("These diagrams show which strings to fret, which strings stay open, and which strings are muted.");
             Console.WriteLine($"Labels: {Root}R{Reset} = root, {Third}3/b3{Reset} = third, {Fifth}5{Reset} = fifth, X = muted string");
             Console.WriteLine($"{NoteLabelCommandText()}, B/Q = back");
             Console.WriteLine();

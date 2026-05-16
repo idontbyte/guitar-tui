@@ -28,6 +28,8 @@ public sealed class FretboardRenderer
 
     public NoteLabelMode NoteLabelMode { get; set; } = NoteLabelMode.IntervalNames;
 
+    public AccidentalDisplayMode AccidentalDisplayMode { get; set; } = AccidentalDisplayMode.Auto;
+
     public IReadOnlyList<string> Render(FretboardDiagram diagram, bool highlighted = false)
     {
         if (diagram.Length < 1)
@@ -46,7 +48,7 @@ public sealed class FretboardRenderer
 
         for (var stringIndex = 0; stringIndex < diagram.Strings.Count; stringIndex++)
         {
-            lines.Add(RenderString(diagram, stringIndex, markers, highlighted, NoteLabelMode));
+            lines.Add(RenderString(diagram, stringIndex, markers, highlighted, NoteLabelMode, AccidentalDisplayMode));
         }
 
         return lines;
@@ -184,7 +186,8 @@ public sealed class FretboardRenderer
         int stringIndex,
         IReadOnlyDictionary<(int StringIndex, int Fret), FretPosition> markers,
         bool highlighted,
-        NoteLabelMode noteLabelMode)
+        NoteLabelMode noteLabelMode,
+        AccidentalDisplayMode accidentalDisplayMode)
     {
         var builder = new StringBuilder();
         builder.Append(Color(diagram.Strings[stringIndex].PadLeft(2), StringName));
@@ -196,7 +199,7 @@ public sealed class FretboardRenderer
             {
                 var label = position.IsMuted ? "X" : DisplayLabelFor(position, noteLabelMode);
                 var colorLabel = position.IsMuted ? "X" : position.Label;
-                var displayLabel = DisplayLabel(label);
+                var displayLabel = DisplayLabel(label, accidentalDisplayMode);
                 var paddedLabel = displayLabel.Length > 3 ? displayLabel[..3] : displayLabel.PadLeft(3).PadRight(4);
                 builder.Append(Color(paddedLabel, ColorFor(colorLabel, highlighted, fret == 0)));
             }
@@ -221,7 +224,14 @@ public sealed class FretboardRenderer
         _ => position.Label
     };
 
-    private static string DisplayLabel(string label) => label switch
+    private static string DisplayLabel(string label, AccidentalDisplayMode accidentalDisplayMode)
+    {
+        if (UseAsciiAccidentals(accidentalDisplayMode))
+        {
+            return label;
+        }
+
+        return label switch
     {
         "b2" => "♭2",
         "b9" => "♭9",
@@ -235,6 +245,14 @@ public sealed class FretboardRenderer
         "b7" => "♭7",
         "bb7" => "♭♭7",
         _ => label
+    };
+    }
+
+    private static bool UseAsciiAccidentals(AccidentalDisplayMode accidentalDisplayMode) => accidentalDisplayMode switch
+    {
+        AccidentalDisplayMode.Ascii => true,
+        AccidentalDisplayMode.Unicode => false,
+        _ => OperatingSystem.IsWindows()
     };
 
     private static string ColorFor(string label, bool highlighted = false, bool openFret = false)

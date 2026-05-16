@@ -48,15 +48,15 @@ public sealed class JazzChordLibrary(Random? random = null)
     [
         new("Major 7", "maj7", ["R", "3", "5", "7"], "Stable major color"),
         new("Major 6", "6", ["R", "3", "5", "6"], "Swing and older standards"),
-        new("Major 6/9", "6/9", ["R", "3", "6", "9"], "Bright tonic color without the 7th"),
+        new("Major 6/9", "6/9", ["R", "3", "6", "9"], "Bright tonic color; guitar voicings often omit the 5th"),
         new("Minor 7", "m7", ["R", "b3", "5", "b7"], "Minor ii and modal minor"),
         new("Minor 6", "m6", ["R", "b3", "5", "6"], "Minor tonic color"),
-        new("Minor 9", "m9", ["R", "b3", "b7", "9"], "Minor 7 with a smoother top color"),
+        new("Minor 9", "m9", ["R", "b3", "b7", "9"], "Minor 7 with a smoother top color; 5th often omitted"),
         new("Dominant 7", "7", ["R", "3", "5", "b7"], "V chord and blues color"),
-        new("Dominant 9", "9", ["R", "3", "b7", "9"], "Common comping dominant"),
-        new("Dominant 13", "13", ["R", "3", "b7", "13"], "Dominant with a 6/13 color"),
-        new("7 flat 9", "7b9", ["R", "3", "b7", "b9"], "Altered dominant tension"),
-        new("7 sharp 9", "7#9", ["R", "3", "b7", "#9"], "Bluesy altered dominant tension"),
+        new("Dominant 9", "9", ["R", "3", "b7", "9"], "Common comping dominant; 5th often omitted"),
+        new("Dominant 13", "13", ["R", "3", "b7", "13"], "Dominant with a 6/13 color; 5th/9th may be omitted"),
+        new("7 flat 9", "7b9", ["R", "3", "b7", "b9"], "Altered dominant tension; 5th often omitted"),
+        new("7 sharp 9", "7#9", ["R", "3", "b7", "#9"], "Bluesy altered dominant tension; 5th often omitted"),
         new("Minor 7 flat 5", "m7b5", ["R", "b3", "b5", "b7"], "Half-diminished ii in minor"),
         new("Diminished 7", "dim7", ["R", "b3", "b5", "bb7"], "Symmetric passing diminished")
     ];
@@ -282,9 +282,8 @@ public sealed class JazzChordLibrary(Random? random = null)
 
     public static string GuideToneSummary(JazzChordSymbol chord)
     {
-        var rootPitch = MusicTheory.PitchClassFor(chord.Root);
         return string.Join(" ", GuideToneIntervalsFor(chord.Quality)
-            .Select(interval => $"{interval}={MusicTheory.NameFor(rootPitch + SemitonesFor(interval))}"));
+            .Select(interval => $"{interval}={MusicTheory.NameForInterval(chord.Root, interval)}"));
     }
 
     public static string GuideToneMovement(JazzChordSymbol current, JazzChordSymbol next)
@@ -301,9 +300,8 @@ public sealed class JazzChordLibrary(Random? random = null)
 
     private static IReadOnlyList<(string Interval, string Note)> GuideToneNotes(JazzChordSymbol chord)
     {
-        var rootPitch = MusicTheory.PitchClassFor(chord.Root);
         return GuideToneIntervalsFor(chord.Quality)
-            .Select(interval => (interval, MusicTheory.NameFor(rootPitch + SemitonesFor(interval))))
+            .Select(interval => (interval, MusicTheory.NameForInterval(chord.Root, interval)))
             .ToArray();
     }
 
@@ -321,6 +319,11 @@ public sealed class JazzChordLibrary(Random? random = null)
 
     private static IReadOnlyList<string> GuideToneIntervalsFor(JazzChordQuality quality)
     {
+        if (quality.Intervals.Contains("b5"))
+        {
+            return ["b3", "b5"];
+        }
+
         if (quality.Intervals.Contains("7"))
         {
             return [quality.Intervals.Contains("b3") ? "b3" : "3", "7"];

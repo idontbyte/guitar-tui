@@ -11,7 +11,7 @@ public sealed partial class App
         {
             Console.Clear();
             WriteHeader("Shredding");
-            Console.WriteLine("Shredding practice is clean-speed training: relaxed hands, tiny motion, even timing, and honest tempo tracking.");
+            WriteDescriptionLine("Shredding practice is clean-speed training: relaxed hands, tiny motion, even timing, and honest tempo tracking.");
             Console.WriteLine();
             WriteMenuOption("1", "Technique path", "Work through the core skills in a sensible order.");
             WriteMenuOption("2", "Finger independence drills", "Classic fretting-hand patterns like 1-2-3-4 and spider walks.");
@@ -62,24 +62,24 @@ public sealed partial class App
     {
         Console.Clear();
         WriteHeader("Shred technique path");
-        Console.WriteLine("Use this order when speed work feels scattered:");
+        WriteDescriptionLine("Use this order when speed work feels scattered:");
         Console.WriteLine();
-        Console.WriteLine("1. Tune and relax the hands.");
-        Console.WriteLine("2. Chromatic 1-2-3-4 for basic finger independence.");
-        Console.WriteLine("3. One-string alternate picking for pick motion.");
-        Console.WriteLine("4. Outside and inside picking for string crossing.");
-        Console.WriteLine("5. Synchronization 1-2-4 and 1-3-4 for hand locking.");
-        Console.WriteLine("6. Three-note scale sequences for musical speed.");
-        Console.WriteLine("7. Legato drills for hammer-on and pull-off evenness.");
-        Console.WriteLine("8. Four-note bursts for brief high-speed relaxed motion.");
+        WriteDescriptionLine("1. Tune and relax the hands.");
+        WriteDescriptionLine("2. Chromatic 1-2-3-4 for basic finger independence.");
+        WriteDescriptionLine("3. One-string alternate picking for pick motion.");
+        WriteDescriptionLine("4. Outside and inside picking for string crossing.");
+        WriteDescriptionLine("5. Synchronization 1-2-4 and 1-3-4 for hand locking.");
+        WriteDescriptionLine("6. Three-note scale sequences for musical speed.");
+        WriteDescriptionLine("7. Legato drills for hammer-on and pull-off evenness.");
+        WriteDescriptionLine("8. Four-note bursts for brief high-speed relaxed motion.");
         Console.WriteLine();
         Console.WriteLine("Rules");
-        Console.WriteLine("- Clean and relaxed beats fast and tense.");
-        Console.WriteLine("- Raise tempo only after repeatable clean reps.");
-        Console.WriteLine("- If the shoulder, forearm, or thumb tightens, slow down.");
-        Console.WriteLine("- Muting matters: unused strings should stay quiet.");
+        WriteDescriptionLine("- Clean and relaxed beats fast and tense.");
+        WriteDescriptionLine("- Raise tempo only after repeatable clean reps.");
+        WriteDescriptionLine("- If the shoulder, forearm, or thumb tightens, slow down.");
+        WriteDescriptionLine("- Muting matters: unused strings should stay quiet.");
         Console.WriteLine();
-        Console.WriteLine("Press any key to go back.");
+        WriteDescriptionLine("Press any key to go back.");
         Console.ReadKey(intercept: true);
     }
 
@@ -191,7 +191,7 @@ public sealed partial class App
         {
             Console.Clear();
             WriteHeader("Daily shred workout");
-            Console.WriteLine("A short routine biased toward new, messy, tense, or neglected drills.");
+            WriteDescriptionLine("A short routine biased toward new, messy, tense, or neglected drills.");
             Console.WriteLine();
 
             for (var index = 0; index < drills.Count; index++)
