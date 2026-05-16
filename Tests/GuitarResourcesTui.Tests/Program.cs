@@ -869,6 +869,19 @@ internal sealed class ArpeggioLibraryTests
             }
         }
 
+        var phrase = library.BuildPhrase(progression);
+        TestAssert.Equal(progression.Count, phrase.Count, "arpeggio phrase has one shape per chord");
+        foreach (var item in phrase)
+        {
+            TestAssert.SequenceEqual(["E", "B", "G", "D", "A", "E"], item.Diagram.Strings, $"{item.Title} renders on all six strings");
+            TestAssert.Equal(6, item.Diagram.Length, $"{item.Title} uses a compact six-fret arpeggio shape");
+            TestAssert.True(item.Diagram.Positions.All(position => item.Chord.Quality.Intervals.Contains(position.Label)), $"{item.Title} only shows chord tones");
+        }
+
+        var nextPhrase = library.BuildPhrase(progression, phrase[^1]);
+        TestAssert.Equal(progression.Count, nextPhrase.Count, "next arpeggio phrase has one shape per chord");
+        TestAssert.True(Math.Abs(nextPhrase[0].CenterFret - phrase[^1].CenterFret) <= 6, "next arpeggio phrase starts near the previous shape");
+
         var target = library.BuildPrompt(progression, new HashSet<string>(["3", "b3", "7", "b7"]));
         TestAssert.True(target.Chord.Quality.Intervals.Contains(target.TargetInterval), "target prompt chooses a chord tone");
         TestAssert.True(!string.IsNullOrWhiteSpace(target.TargetNote), "target prompt names the target note");

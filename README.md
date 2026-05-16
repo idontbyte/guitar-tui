@@ -149,6 +149,8 @@ Useful jazz controls:
 
 Supported arpeggio qualities include major, minor, major 7, dominant 7, minor 7, minor 7 flat 5, and diminished 7.
 
+The song changes arpeggio game shows compact six-fret arpeggio positions instead of a full-neck interval map. It highlights the current shape and shows the next few shapes so the chord change is visible before it arrives.
+
 Useful arpeggio controls:
 
 - `Space`: pause or resume in song mode.
@@ -292,6 +294,12 @@ The script defaults to `osx-arm64`. Pass another runtime if needed:
 
 ```bash
 ./packaging/macos/package-macos.sh osx-x64
+```
+
+The script defaults to version `0.2` and writes a versioned DMG name. Override the version if needed:
+
+```bash
+VERSION=0.3 ./packaging/macos/package-macos.sh
 ```
 
 The generated `.app` and `.dmg` are written under `artifacts/macos/`.

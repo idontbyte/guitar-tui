@@ -155,6 +155,31 @@ public sealed class ArpeggioLibrary(Random? random = null)
         return new ArpeggioPrompt(chord, target, NoteNameFor(chord.Root, target));
     }
 
+    public IReadOnlyList<ArpeggioPracticeItem> BuildPhrase(
+        IReadOnlyList<ArpeggioChordSymbol> progression,
+        ArpeggioPracticeItem? previousItem = null)
+    {
+        if (progression.Count == 0)
+        {
+            throw new ArgumentException("Progression must contain at least one chord.", nameof(progression));
+        }
+
+        var phrase = new List<ArpeggioPracticeItem>();
+        var anchorFret = previousItem?.CenterFret;
+
+        foreach (var chord in progression)
+        {
+            var candidates = GetShapes(chord.Root, chord.Quality)
+                .Select(shape => new ArpeggioPracticeItem(chord, shape))
+                .ToArray();
+            var item = PickNear(candidates, anchorFret);
+            phrase.Add(item);
+            anchorFret = item.CenterFret;
+        }
+
+        return phrase;
+    }
+
     public static ArpeggioQuality Quality(string suffix)
     {
         return Qualities.Single(quality => quality.Suffix.Equals(suffix, StringComparison.OrdinalIgnoreCase));
@@ -219,6 +244,36 @@ public sealed class ArpeggioLibrary(Random? random = null)
         return new ArpeggioShape(number, startFret, minFret, maxFret, diagram);
     }
 
+    private ArpeggioPracticeItem PickNear(IReadOnlyList<ArpeggioPracticeItem> candidates, double? anchorFret)
+    {
+        if (candidates.Count == 0)
+        {
+            throw new InvalidOperationException("No arpeggio shapes are available for this chord.");
+        }
+
+        if (anchorFret is null)
+        {
+            var playable = candidates
+                .Where(candidate => candidate.Shape.StartFret is >= 3 and <= 9)
+                .DefaultIfEmpty()
+                .Where(candidate => candidate is not null)
+                .Cast<ArpeggioPracticeItem>()
+                .ToArray();
+
+            return playable[_random.Next(playable.Length)];
+        }
+
+        var bestDistance = candidates.Min(candidate => Math.Abs(candidate.CenterFret - anchorFret.Value));
+        var nearby = candidates
+            .Where(candidate => Math.Abs(candidate.CenterFret - anchorFret.Value) <= bestDistance + 2.5)
+            .OrderBy(candidate => Math.Abs(candidate.CenterFret - anchorFret.Value))
+            .ThenBy(candidate => candidate.Shape.StartFret)
+            .Take(4)
+            .ToArray();
+
+        return nearby[_random.Next(nearby.Length)];
+    }
+
     private static string NormalizeRootName(string root)
     {
         var trimmed = root.Trim();
@@ -252,6 +307,15 @@ public sealed record ArpeggioShape(
     int MinFret,
     int MaxFret,
     FretboardDiagram Diagram);
+
+public sealed record ArpeggioPracticeItem(ArpeggioChordSymbol Chord, ArpeggioShape Shape)
+{
+    public string Title => $"{Chord.DisplayName} pos {Shape.Number} ({Shape.StartFret}-{Shape.StartFret + Shape.Diagram.Length - 1})";
+
+    public FretboardDiagram Diagram => Shape.Diagram;
+
+    public double CenterFret => (Shape.MinFret + Shape.MaxFret) / 2.0;
+}
 
 public sealed record ArpeggioPrompt(
     ArpeggioChordSymbol Chord,

@@ -6,11 +6,12 @@ APP_NAME="Guitar TUI"
 BUNDLE_ID="com.idontbyte.guitartui"
 RUNTIME="${1:-osx-arm64}"
 CONFIGURATION="Release"
+VERSION="${VERSION:-0.2}"
 ARTIFACT_DIR="$ROOT_DIR/artifacts/macos"
 PUBLISH_DIR="$ARTIFACT_DIR/publish-$RUNTIME"
 APP_DIR="$ARTIFACT_DIR/$APP_NAME.app"
 DMG_ROOT="$ARTIFACT_DIR/dmg-root"
-DMG_PATH="$ARTIFACT_DIR/$APP_NAME-$RUNTIME.dmg"
+DMG_PATH="$ARTIFACT_DIR/$APP_NAME-v$VERSION-$RUNTIME.dmg"
 ICON_PNG="$ARTIFACT_DIR/GuitarTUIIcon.png"
 ICONSET="$ARTIFACT_DIR/GuitarTUI.iconset"
 
@@ -51,9 +52,9 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>1.0.0</string>
+  <string>$VERSION</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>$VERSION</string>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
 </dict>

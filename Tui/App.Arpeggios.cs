@@ -315,6 +315,8 @@ public sealed partial class App
         var clickEnabled = true;
         var backingEnabled = true;
         var targetMode = false;
+        var currentPhrase = _arpeggios.BuildPhrase(progression);
+        var nextPhrase = _arpeggios.BuildPhrase(progression, currentPhrase[^1]);
         var lastSynthChordIndex = -1;
         var lastRenderedChordIndex = -1;
         var phraseLength = chordLengths.Sum();
@@ -344,7 +346,7 @@ public sealed partial class App
 
                 if (chordIndex != lastRenderedChordIndex)
                 {
-                    RenderArpeggioSongGame(setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
+                    RenderArpeggioSongGame(setup.Title, progression, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
                     lastRenderedChordIndex = chordIndex;
                 }
 
@@ -374,11 +376,11 @@ public sealed partial class App
                                 {
                                     lastSynthChordIndex = -1;
                                 }
-                                RenderArpeggioSongGame(setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
+                                RenderArpeggioSongGame(setup.Title, progression, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
                                 break;
                             case ConsoleKey.M:
                                 clickEnabled = !clickEnabled;
-                                RenderArpeggioSongGame(setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
+                                RenderArpeggioSongGame(setup.Title, progression, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
                                 break;
                             case ConsoleKey.S:
                                 backingEnabled = !backingEnabled;
@@ -390,15 +392,15 @@ public sealed partial class App
                                 {
                                     lastSynthChordIndex = -1;
                                 }
-                                RenderArpeggioSongGame(setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
+                                RenderArpeggioSongGame(setup.Title, progression, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
                                 break;
                             case ConsoleKey.T:
                                 targetMode = !targetMode;
-                                RenderArpeggioSongGame(setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
+                                RenderArpeggioSongGame(setup.Title, progression, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
                                 break;
                             case ConsoleKey.L:
                                 ToggleNoteLabelMode();
-                                RenderArpeggioSongGame(setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
+                                RenderArpeggioSongGame(setup.Title, progression, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
                                 break;
                             case ConsoleKey.OemMinus:
                             case ConsoleKey.Subtract:
@@ -406,7 +408,7 @@ public sealed partial class App
                                 StopProcesses(synthProcesses);
                                 WarmArpeggioBackingChords(progression, chordLengths, bpm, timeSignature);
                                 lastSynthChordIndex = -1;
-                                RenderArpeggioSongGame(setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
+                                RenderArpeggioSongGame(setup.Title, progression, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
                                 break;
                             case ConsoleKey.OemPlus:
                             case ConsoleKey.Add:
@@ -414,7 +416,7 @@ public sealed partial class App
                                 StopProcesses(synthProcesses);
                                 WarmArpeggioBackingChords(progression, chordLengths, bpm, timeSignature);
                                 lastSynthChordIndex = -1;
-                                RenderArpeggioSongGame(setup.Title, progression, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
+                                RenderArpeggioSongGame(setup.Title, progression, currentPhrase, nextPhrase, chordLengths, chordIndex, beatWithinChord, beatWithinBar, timeSignature, bpm, clickEnabled, backingEnabled, paused, targetMode);
                                 break;
                             case ConsoleKey.N:
                             case ConsoleKey.RightArrow:
@@ -435,6 +437,8 @@ public sealed partial class App
                 if (beat >= phraseLength)
                 {
                     beat = 0;
+                    currentPhrase = nextPhrase;
+                    nextPhrase = _arpeggios.BuildPhrase(progression, currentPhrase[^1]);
                     lastSynthChordIndex = -1;
                     lastRenderedChordIndex = -1;
                 }
@@ -474,6 +478,8 @@ public sealed partial class App
     private void RenderArpeggioSongGame(
         string title,
         IReadOnlyList<ArpeggioChordSymbol> progression,
+        IReadOnlyList<ArpeggioPracticeItem> currentPhrase,
+        IReadOnlyList<ArpeggioPracticeItem> nextPhrase,
         IReadOnlyList<int> chordLengths,
         int chordIndex,
         int beatWithinChord,
@@ -485,11 +491,18 @@ public sealed partial class App
         bool paused,
         bool targetMode)
     {
-        var chord = progression[chordIndex];
+        var currentItem = currentPhrase[chordIndex];
+        var chord = currentItem.Chord;
         var selectedIntervals = targetMode
             ? new HashSet<string>(["3", "b3", "7", "b7", "bb7"])
             : chord.Quality.Intervals.ToHashSet();
-        var diagram = _arpeggios.BuildMap(chord.Root, chord.Quality, startFret: 0, length: 16, selectedIntervals);
+        var visibleItems = EnumerateRollingArpeggioItems(currentPhrase, nextPhrase, chordLengths, chordIndex)
+            .Take(4)
+            .Select((item, index) => (
+                $"{(index == 0 ? "> " : "  ")}{item.PracticeItem.Title} [{item.Beats} beat{Pluralize(item.Beats)}]",
+                DiagramForArpeggioPracticeItem(item.PracticeItem, selectedIntervals)))
+            .ToArray();
+        var gridCellWidth = visibleItems.Max(_renderer.MeasureTitledDiagramWidth);
 
         Console.Clear();
         WriteHeader("Song changes arpeggio game");
@@ -498,16 +511,52 @@ public sealed partial class App
         Console.WriteLine($"Space = pause, -/+ = tempo, T = target tones, M = mute click, S = mute backing, {NoteLabelCommandText()}, N = next chord, B/Q = main menu");
         Console.WriteLine();
         Console.WriteLine($"Now: {chord.DisplayName}  chord beat {beatWithinChord + 1}/{chordLengths[chordIndex]}  bar beat {beatWithinBar + 1}/{timeSignature.BeatsPerBar}");
+        Console.WriteLine($"Shape: position {currentItem.Shape.Number}, frets {currentItem.Shape.StartFret}-{currentItem.Shape.StartFret + currentItem.Shape.Diagram.Length - 1}");
         Console.WriteLine(ArpeggioLibrary.TeachingHintFor(chord));
         Console.WriteLine();
 
-        foreach (var line in _renderer.Render(diagram))
+        foreach (var line in _renderer.RenderMany(visibleItems, GetUsableConsoleWidth(), new HashSet<int> { 0 }, maxColumns: 4, cellWidth: gridCellWidth))
         {
             Console.WriteLine(line);
         }
 
         Console.WriteLine();
         WriteCenteredHighlightedArpeggioProgression(progression, chordIndex);
+    }
+
+    private FretboardDiagram DiagramForArpeggioPracticeItem(ArpeggioPracticeItem item, IReadOnlySet<string> selectedIntervals)
+    {
+        return _arpeggios.BuildMap(
+            item.Chord.Root,
+            item.Chord.Quality,
+            item.Shape.StartFret,
+            item.Shape.Diagram.Length,
+            selectedIntervals);
+    }
+
+    private static IEnumerable<(ArpeggioPracticeItem PracticeItem, int Beats)> EnumerateRollingArpeggioItems(
+        IReadOnlyList<ArpeggioPracticeItem> currentPhrase,
+        IReadOnlyList<ArpeggioPracticeItem> nextPhrase,
+        IReadOnlyList<int> chordLengths,
+        int chordIndex)
+    {
+        for (var index = chordIndex; index < currentPhrase.Count; index++)
+        {
+            yield return (currentPhrase[index], chordLengths[index]);
+        }
+
+        for (var index = 0; index < nextPhrase.Count; index++)
+        {
+            yield return (nextPhrase[index], chordLengths[index]);
+        }
+
+        while (nextPhrase.Count > 0)
+        {
+            for (var index = 0; index < nextPhrase.Count; index++)
+            {
+                yield return (nextPhrase[index], chordLengths[index]);
+            }
+        }
     }
 
     private TriadProgressionSetup? ReadArpeggioProgressionSetup()
