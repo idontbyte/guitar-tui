@@ -86,6 +86,9 @@ public sealed class ShredPracticeLog
 
 public static class ShredLibrary
 {
+    public const int MinimumBuilderBpm = 30;
+    public const int MaximumBuilderBpm = 320;
+
     private static readonly IReadOnlyList<string> GuitarStrings = ["E", "B", "G", "D", "A", "E"];
 
     public static readonly IReadOnlyList<ShredDrill> Drills =
@@ -325,7 +328,7 @@ public static class ShredLibrary
         var record = log.Records.FirstOrDefault(item => item.DrillId == drill.Id);
         var startBpm = record is null
             ? drill.StartBpm
-            : Math.Clamp(record.TopCleanBpm - 10, drill.StartBpm, drill.GoalBpm);
+            : Math.Clamp(record.TopCleanBpm - 10, drill.StartBpm, MaximumBuilderBpm);
 
         return new ShredTempoState(drill.Id, startBpm, record?.TopCleanBpm ?? 0, drill.GoalBpm, 0);
     }
@@ -342,14 +345,14 @@ public static class ShredLibrary
             ShredAttemptResult.Messy => new ShredTempoUpdate(
                 state with
                 {
-                    CurrentBpm = Math.Max(30, state.CurrentBpm - increment),
+                    CurrentBpm = Math.Max(MinimumBuilderBpm, state.CurrentBpm - increment),
                     CleanStreak = 0
                 },
                 "Messy rep: drop the tempo and make the notes even again."),
             ShredAttemptResult.Tense => new ShredTempoUpdate(
                 state with
                 {
-                    CurrentBpm = Math.Max(30, state.CurrentBpm - increment * 2),
+                    CurrentBpm = Math.Max(MinimumBuilderBpm, state.CurrentBpm - increment * 2),
                     CleanStreak = 0
                 },
                 "Tension rep: back off more. Relaxation is part of the drill."),
@@ -427,7 +430,7 @@ public static class ShredLibrary
                 $"Clean rep {cleanStreak}/{cleanRepsRequired}. Stay relaxed and repeat.");
         }
 
-        var nextBpm = Math.Min(state.GoalBpm, state.CurrentBpm + increment);
+        var nextBpm = Math.Min(MaximumBuilderBpm, state.CurrentBpm + increment);
         return new ShredTempoUpdate(
             state with
             {
@@ -436,7 +439,9 @@ public static class ShredLibrary
                 CleanStreak = 0
             },
             nextBpm == state.CurrentBpm
-                ? "Goal tempo reached. Keep it clean rather than forcing more speed."
+                ? "Speed-builder ceiling reached. Keep it clean rather than forcing more speed."
+                : nextBpm > state.GoalBpm
+                    ? $"Goal tempo passed. Move up to {nextBpm} BPM only if it stays relaxed."
                 : $"Three clean reps. Move up to {nextBpm} BPM.");
     }
 

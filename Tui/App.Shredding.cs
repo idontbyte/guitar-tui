@@ -309,12 +309,12 @@ public sealed partial class App
                         break;
                     case ConsoleKey.OemMinus:
                     case ConsoleKey.Subtract:
-                        state = state with { CurrentBpm = Math.Max(30, state.CurrentBpm - 5), CleanStreak = 0 };
+                        state = state with { CurrentBpm = Math.Max(ShredLibrary.MinimumBuilderBpm, state.CurrentBpm - 5), CleanStreak = 0 };
                         message = $"Manual tempo change: {state.CurrentBpm} BPM.";
                         break;
                     case ConsoleKey.OemPlus:
                     case ConsoleKey.Add:
-                        state = state with { CurrentBpm = Math.Min(state.GoalBpm, state.CurrentBpm + 5), CleanStreak = 0 };
+                        state = state with { CurrentBpm = Math.Min(ShredLibrary.MaximumBuilderBpm, state.CurrentBpm + 5), CleanStreak = 0 };
                         message = $"Manual tempo change: {state.CurrentBpm} BPM.";
                         break;
                     case ConsoleKey.LeftArrow:
@@ -348,7 +348,7 @@ public sealed partial class App
         Console.Clear();
         WriteHeader("Speed builder");
         Console.WriteLine($"{drill.Title}  |  {ShredLibrary.DisplayNameFor(drill.Category)}");
-        Console.WriteLine($"BPM: {state.CurrentBpm}  Top clean: {state.TopCleanBpm}  Goal: {state.GoalBpm}  Clean reps: {state.CleanStreak}/3  Click: {(clickEnabled ? "on" : "muted")}");
+        Console.WriteLine($"BPM: {state.CurrentBpm}  Top clean: {state.TopCleanBpm}  Goal: {state.GoalBpm}  Max: {ShredLibrary.MaximumBuilderBpm}  Clean reps: {state.CleanStreak}/3  Click: {(clickEnabled ? "on" : "muted")}");
         Console.WriteLine("C = clean, M = messy, T = tense, Space = click, -/+ = tempo, arrows = position, B/Q = back");
         Console.WriteLine();
         Console.WriteLine(message);

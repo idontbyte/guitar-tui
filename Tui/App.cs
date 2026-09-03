@@ -36,6 +36,7 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
             WriteMenuOption("7", "Intervals", "See how notes relate to a root and practise targeting chord tones.");
             WriteMenuOption("8", "Shredding", "Build clean speed with finger drills, picking work, and tempo tracking.");
             WriteMenuOption("9", "Daily practice", "Build a guided session from the app's drills and track what needs review.");
+            WriteMenuOption("10", "Printable resources", "Open printable PDF-ready guides and focused practice sheets.");
             Console.WriteLine("0. Exit");
             Console.WriteLine();
             Console.Write("Choose an option > ");
@@ -68,6 +69,9 @@ public sealed partial class App(TriadInversionLibrary triads, PentatonicLibrary 
                     break;
                 case "9":
                     ShowPracticeCoach();
+                    break;
+                case "10":
+                    ShowPrintableResourcesMenu();
                     break;
                 case "0":
                     return;

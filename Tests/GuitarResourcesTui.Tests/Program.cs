@@ -760,6 +760,7 @@ internal sealed class JazzChordLibraryTests
 
             AssertVoicingMode(library, quality, JazzVoicingMode.GuideTones, JazzChordLibrary.IntervalsFor(quality, JazzVoicingMode.GuideTones));
             AssertVoicingMode(library, quality, JazzVoicingMode.Shell, JazzChordLibrary.IntervalsFor(quality, JazzVoicingMode.Shell));
+            AssertShellVoicingsUsePracticalGuitarGrips(library, quality);
         }
 
         var phrase = library.BuildPhrase(progression);
@@ -820,6 +821,33 @@ internal sealed class JazzChordLibraryTests
         foreach (var voicing in groups.SelectMany(group => group.Voicings))
         {
             TestAssert.SequenceEqual(expectedIntervals.OrderBy(LabelSortOrder), voicing.Diagram.Positions.Select(position => position.Label).OrderBy(LabelSortOrder), $"{quality.Suffix} {voicingMode.DisplayName()} uses the teaching tone set");
+        }
+    }
+
+    private static void AssertShellVoicingsUsePracticalGuitarGrips(JazzChordLibrary library, JazzChordQuality quality)
+    {
+        var allowedStringSets = new HashSet<string>
+        {
+            "2,3,5",
+            "2,3,4",
+            "1,2,3"
+        };
+
+        foreach (var group in library.GetVoicings("C", quality, JazzVoicingMode.Shell))
+        {
+            foreach (var voicing in group.Voicings)
+            {
+                var sourceStringIndexes = voicing.Diagram.Positions
+                    .Select(position => position.SourceStringIndex!.Value)
+                    .Order()
+                    .ToArray();
+                var lowestString = sourceStringIndexes.Max();
+                var bassPosition = voicing.Diagram.Positions.Single(position => position.SourceStringIndex == lowestString);
+
+                TestAssert.True(allowedStringSets.Contains(string.Join(",", sourceStringIndexes)), $"{quality.Suffix} shell uses 6-4-3, 5-4-3, or 4-3-2 strings");
+                TestAssert.Equal("R", bassPosition.Label, $"{quality.Suffix} shell keeps the root on the lowest played string");
+                TestAssert.True(voicing.MaxFret - voicing.MinFret <= 4, $"{quality.Suffix} shell fits within a practical five-fret grip");
+            }
         }
     }
 
@@ -979,6 +1007,10 @@ internal sealed class ShredLibraryTests
         var update3 = ShredLibrary.ApplyAttempt(update2.State, ShredAttemptResult.Clean);
         TestAssert.Equal(85, update3.State.CurrentBpm, "three clean reps raise tempo");
         TestAssert.Equal(80, update3.State.TopCleanBpm, "top clean tempo records completed clean tempo");
+        var aboveGoal1 = ShredLibrary.ApplyAttempt(new ShredTempoState(drill.Id, drill.GoalBpm, drill.GoalBpm, drill.GoalBpm, 2), ShredAttemptResult.Clean);
+        TestAssert.Equal(drill.GoalBpm + 5, aboveGoal1.State.CurrentBpm, "speed builder can continue above the drill goal");
+        var maxed = ShredLibrary.ApplyAttempt(new ShredTempoState(drill.Id, ShredLibrary.MaximumBuilderBpm, ShredLibrary.MaximumBuilderBpm, drill.GoalBpm, 2), ShredAttemptResult.Clean);
+        TestAssert.Equal(ShredLibrary.MaximumBuilderBpm, maxed.State.CurrentBpm, "speed builder stops at the high metronome ceiling");
         var messy = ShredLibrary.ApplyAttempt(update3.State, ShredAttemptResult.Messy);
         TestAssert.Equal(80, messy.State.CurrentBpm, "messy attempt drops tempo");
         TestAssert.Equal(0, messy.State.CleanStreak, "messy attempt resets clean streak");
@@ -989,6 +1021,9 @@ internal sealed class ShredLibraryTests
         TestAssert.Equal(80, log.Records[0].TopCleanBpm, "shred log stores top clean tempo");
         var started = ShredLibrary.StartingTempoFor(drill, log);
         TestAssert.Equal(70, started.CurrentBpm, "speed builder restarts below top clean tempo");
+        log.Records[0] = log.Records[0] with { TopCleanBpm = drill.GoalBpm + 30 };
+        var fastStart = ShredLibrary.StartingTempoFor(drill, log);
+        TestAssert.Equal(drill.GoalBpm + 20, fastStart.CurrentBpm, "speed builder can restart above the drill goal after faster clean tempos");
 
         var workout = ShredLibrary.BuildDailyWorkout(log);
         TestAssert.Equal(5, workout.Count, "daily shred workout has five drills");

@@ -29,10 +29,9 @@ public sealed class JazzChordLibrary(Random? random = null)
 
     private static readonly IReadOnlyList<StringGrouping> ShellGroupings =
     [
-        new("E B G", [0, 1, 2]),
-        new("B G D", [1, 2, 3]),
-        new("G D A", [2, 3, 4]),
-        new("D A E", [3, 4, 5])
+        new("6-4-3 shell", [2, 3, 5], RequireRootOnLowestString: true),
+        new("5-4-3 shell", [2, 3, 4], RequireRootOnLowestString: true),
+        new("4-3-2 shell", [1, 2, 3], RequireRootOnLowestString: true)
     ];
 
     private static readonly IReadOnlyList<StringGrouping> GuideToneGroupings =
@@ -98,6 +97,7 @@ public sealed class JazzChordLibrary(Random? random = null)
             var shapes = Cartesian(positionsByString)
                 .Where(shape => shape.Select(position => position.PitchClass).Distinct().Count() == chordTones.Length)
                 .Where(shape => shape.Max(position => position.Fret) - shape.Min(position => position.Fret) <= WindowLength - 1)
+                .Where(shape => !grouping.RequireRootOnLowestString || HasRootOnLowestString(grouping, shape, chordTones))
                 .Select(shape => BuildVoicing(grouping, shape, chordTones))
                 .OrderBy(shape => shape.MinFret == 0 ? 0 : shape.MinFret)
                 .ThenBy(shape => shape.MaxFret)
@@ -402,6 +402,16 @@ public sealed class JazzChordLibrary(Random? random = null)
         return new JazzChordVoicing(lowToHigh, minFret, maxFret, new FretboardDiagram(strings, startFret, WindowLength, positions));
     }
 
+    private static bool HasRootOnLowestString(
+        StringGrouping grouping,
+        IReadOnlyList<StringPosition> shape,
+        IReadOnlyList<JazzChordTone> chordTones)
+    {
+        var lowestStringIndex = grouping.StringIndexes.Max();
+        var rootPitch = chordTones.Single(tone => tone.Label == "R").PitchClass;
+        return shape.Any(position => position.StringIndex == lowestStringIndex && position.PitchClass == rootPitch);
+    }
+
     private static IReadOnlyList<StringPosition> PositionsForString(int stringIndex, IReadOnlySet<int> chordPitchClasses)
     {
         var openPitch = Tuning[stringIndex].PitchClass;
@@ -477,7 +487,10 @@ public sealed class JazzChordLibrary(Random? random = null)
 
     private sealed record GuitarString(string Name, int PitchClass);
 
-    private sealed record StringGrouping(string Name, IReadOnlyList<int> StringIndexes);
+    private sealed record StringGrouping(
+        string Name,
+        IReadOnlyList<int> StringIndexes,
+        bool RequireRootOnLowestString = false);
 
     private sealed record StringPosition(int StringIndex, int Fret, int PitchClass);
 
